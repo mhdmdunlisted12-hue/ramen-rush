@@ -1,0 +1,2602 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>RAMEN RUSH</title>
+<style>
+/* ===== TASARIM TOKENLARI ===== */
+:root{
+  --ink:#0a0714;            /* gece laciverti/siyah */
+  --paper:#f6ead2;          /* krem */
+  --broth:#f0b23a;          /* erişte sarısı */
+  --chili:#e8443a;          /* kırmızı */
+  --ember:#ff7a2f;          /* turuncu */
+  --sakura:#ff8fc0;         /* pembe */
+  --ume:#9b5cff;            /* mor */
+  --neon:#3ce7ff;           /* cyan */
+  --rot:#7fd94a;            /* çürük yeşili */
+  --gold:#ffd35c;
+  --panel:rgba(14,10,26,.82);
+  --stroke:rgba(246,234,210,.22);
+  --font:"Futura","Century Gothic","Trebuchet MS","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#05030c}
+body{font-family:var(--font);color:var(--paper);-webkit-user-select:none;user-select:none;touch-action:none}
+#app{position:fixed;inset:0;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:none}
+
+/* ===== HUD ===== */
+#hud{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s}
+#hud.on{opacity:1}
+.hud-box{position:absolute;padding:10px 16px;background:var(--panel);border:2px solid var(--stroke);
+  border-radius:14px;backdrop-filter:blur(6px);line-height:1.05}
+.hud-label{font-size:11px;letter-spacing:.22em;opacity:.6}
+.hud-val{font-size:26px;font-weight:800;letter-spacing:.02em}
+#hudLives{top:16px;left:16px}
+#hudScore{top:16px;right:16px;text-align:right;min-width:150px}
+#hudScore .hud-val{font-size:32px;color:var(--broth)}
+#hudCenter{top:16px;left:50%;transform:translateX(-50%);display:flex;gap:22px;text-align:center}
+#hudTime .hud-val{color:var(--paper)}
+#hudTime.warn .hud-val{color:var(--chili);animation:pulse .5s infinite}
+@keyframes pulse{50%{transform:scale(1.18)}}
+#hearts{font-size:24px;letter-spacing:3px}
+.heart{display:inline-block;transition:transform .15s}
+.heart.dead{opacity:.22;filter:grayscale(1)}
+.heart.shake{animation:hshake .4s}
+@keyframes hshake{25%{transform:translateX(-6px) rotate(-12deg)}75%{transform:translateX(6px) rotate(12deg)}}
+#hudCombo{position:absolute;left:50%;bottom:23%;transform:translateX(-50%);text-align:center;
+  font-size:34px;font-weight:900;letter-spacing:.05em;opacity:0;transition:opacity .2s;
+  text-shadow:0 0 18px rgba(255,138,60,.8)}
+#hudCombo.on{opacity:1}
+#hudCombo.pop{animation:cpop .22s}
+@keyframes cpop{0%{transform:translateX(-50%) scale(1.45)}100%{transform:translateX(-50%) scale(1)}}
+#rainbowBar{position:absolute;left:50%;top:96px;transform:translateX(-50%);width:260px;opacity:0;transition:opacity .2s}
+#rainbowBar.on{opacity:1}
+#rainbowBar .rb-label{font-size:13px;letter-spacing:.3em;text-align:center;margin-bottom:6px;font-weight:800}
+#rainbowBar .rb-track{height:9px;border-radius:9px;background:rgba(0,0,0,.5);overflow:hidden;border:1px solid var(--stroke)}
+#rainbowBar .rb-fill{height:100%;width:100%;
+  background:linear-gradient(90deg,#ff4d6d,#ffb03a,#7fe86b,#3ce7ff,#9b5cff,#ff4d6d)}
+#pauseBtn{position:absolute;right:16px;bottom:16px;pointer-events:auto;cursor:pointer}
+
+/* ===== FLOATING SCREENS ===== */
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;
+  padding:24px;text-align:center;z-index:5}
+.screen.hidden{display:none}
+.scrim{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,rgba(10,7,20,.55),rgba(5,3,12,.93))}
+.panel{position:relative;width:min(560px,92vw);background:var(--panel);border:2px solid var(--stroke);
+  border-radius:26px;padding:30px 28px;backdrop-filter:blur(10px);
+  box-shadow:0 26px 70px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08)}
+.panel.wide{width:min(760px,94vw)}
+h1.logo{position:relative;font-size:clamp(46px,9vw,96px);font-weight:900;letter-spacing:.02em;line-height:.92;
+  background:linear-gradient(180deg,#fff2cf 10%,var(--broth) 48%,var(--chili) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 6px 0 rgba(120,20,30,.55)) drop-shadow(0 0 34px rgba(255,140,60,.45))}
+.logo-sub{font-size:13px;letter-spacing:.55em;opacity:.72;margin:10px 0 26px}
+h2.title{font-size:34px;font-weight:900;letter-spacing:.04em;margin-bottom:6px}
+h2.title.win{color:var(--gold);text-shadow:0 0 26px rgba(255,211,92,.6)}
+.sub{font-size:13px;letter-spacing:.24em;opacity:.65;margin-bottom:20px}
+.btn{display:block;width:100%;margin:9px 0;padding:15px 20px;font-family:var(--font);font-size:19px;font-weight:800;
+  letter-spacing:.16em;color:var(--paper);background:rgba(255,255,255,.06);border:2px solid var(--stroke);
+  border-radius:16px;cursor:pointer;transition:transform .12s,background .15s,border-color .15s}
+.btn:hover{background:rgba(255,255,255,.12);border-color:rgba(246,234,210,.5);transform:translateY(-2px)}
+.btn:active{transform:translateY(1px) scale(.99)}
+.btn:focus-visible{outline:3px solid var(--neon);outline-offset:3px}
+.btn.primary{background:linear-gradient(180deg,var(--ember),var(--chili));border-color:rgba(255,220,180,.55);
+  font-size:26px;padding:18px;box-shadow:0 10px 0 rgba(120,25,20,.55)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.primary:active{box-shadow:0 4px 0 rgba(120,25,20,.55)}
+.btn.small{font-size:15px;padding:11px 14px}
+.row{display:flex;gap:10px}
+.row .btn{margin:9px 0}
+.list{text-align:left;font-size:16px;line-height:1.85;margin:4px 0 22px}
+.list b{color:var(--broth)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin:16px 0 22px;font-size:15px}
+.stat{display:flex;justify-content:space-between;border-bottom:1px dashed rgba(246,234,210,.18);padding:5px 0}
+.stat span:last-child{font-weight:800;color:var(--broth)}
+.big-score{font-size:clamp(52px,11vw,88px);font-weight:900;color:var(--broth);line-height:1;
+  text-shadow:0 0 40px rgba(240,178,58,.45)}
+.newrec{color:var(--sakura);font-size:17px;letter-spacing:.3em;font-weight:800;margin-top:10px;animation:pulse .8s infinite}
+.coins{margin-top:12px;font-size:16px;color:var(--gold);font-weight:800}
+.setting{display:flex;align-items:center;justify-content:space-between;padding:12px 4px;
+  border-bottom:1px solid rgba(246,234,210,.12);font-size:16px;letter-spacing:.06em}
+.toggle{width:62px;height:32px;border-radius:20px;border:2px solid var(--stroke);background:rgba(0,0,0,.4);
+  position:relative;cursor:pointer;flex:0 0 auto}
+.toggle i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#6b6478;transition:.16s}
+.toggle.on{background:rgba(60,231,255,.2);border-color:var(--neon)}
+.toggle.on i{left:33px;background:var(--neon)}
+.setting.vol{gap:12px}
+.setting input[type=range]{-webkit-appearance:none;height:6px;border-radius:6px;background:rgba(255,255,255,.18);outline:none}
+.setting input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--broth);cursor:pointer;border:2px solid rgba(0,0,0,.4)}
+.setting input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--broth);border:2px solid rgba(0,0,0,.4)}
+.volval{font-size:13px;font-weight:800;width:48px;text-align:right;color:var(--broth)}
+.shop-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;justify-content:center}
+.tab{padding:9px 14px;border-radius:12px;border:2px solid var(--stroke);background:rgba(255,255,255,.05);
+  cursor:pointer;font-size:13px;letter-spacing:.14em;font-weight:800}
+.tab.on{background:var(--ume);border-color:#d9c2ff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;max-height:46vh;overflow-y:auto;padding:4px}
+.item{border:2px solid var(--stroke);border-radius:16px;padding:12px;background:rgba(255,255,255,.05);cursor:pointer;
+  text-align:center;transition:transform .12s,border-color .15s}
+.item:hover{transform:translateY(-3px)}
+.item.owned{border-color:rgba(246,234,210,.42)}
+.item.active{border-color:var(--broth);background:rgba(240,178,58,.16)}
+.item .swatch{height:42px;border-radius:10px;margin-bottom:8px}
+.item .nm{font-size:14px;font-weight:800;letter-spacing:.04em}
+.item .pr{font-size:12px;opacity:.75;margin-top:4px}
+.wallet{font-size:15px;color:var(--gold);font-weight:800;margin-bottom:12px}
+.songs{max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px;margin-bottom:12px}
+.song{display:flex;align-items:center;gap:12px;padding:12px 14px;border:2px solid var(--stroke);border-radius:14px;
+  background:rgba(255,255,255,.05);cursor:pointer;text-align:left;transition:transform .12s,border-color .15s}
+.song:hover{transform:translateX(3px);border-color:rgba(246,234,210,.5)}
+.song.ready{border-color:rgba(240,178,58,.6)}
+.song.missing{opacity:.55}
+.song .idx{font-size:13px;font-weight:900;width:26px;opacity:.6}
+.song .meta{flex:1}
+.song .nm{font-size:16px;font-weight:800;letter-spacing:.04em}
+.song .info{font-size:12px;opacity:.62;margin-top:3px;letter-spacing:.06em}
+.song .load{font-size:11px;font-weight:800;letter-spacing:.1em;padding:7px 10px;border:2px solid var(--stroke);
+  border-radius:10px;background:rgba(0,0,0,.3)}
+.song.ready .load{color:var(--broth);border-color:rgba(240,178,58,.5)}
+.sync{display:flex;align-items:center;gap:10px;font-size:13px;letter-spacing:.1em;margin:6px 0 4px;opacity:.85}
+.sync input{flex:1}
+body.portrait .hud-val{font-size:20px}
+body.portrait #hudScore{min-width:104px}
+body.portrait #hudScore .hud-val{font-size:24px}
+body.portrait #hudCenter{gap:14px;padding:8px 12px}
+body.portrait #hudCombo{bottom:30%;font-size:26px}
+body.portrait #rainbowBar{width:200px;top:92px}
+.field{display:flex;flex-direction:column;gap:6px;text-align:left;margin:10px 0}
+.field label{font-size:12px;letter-spacing:.2em;opacity:.65}
+.field input{padding:13px 14px;border-radius:12px;border:2px solid var(--stroke);background:rgba(0,0,0,.35);
+  color:var(--paper);font-family:var(--font);font-size:16px;outline:none}
+.field input:focus{border-color:var(--broth)}
+.msg{font-size:13px;letter-spacing:.06em;min-height:18px;margin:8px 0;color:var(--sakura)}
+.msg.ok{color:var(--rot)}
+.board{max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.brow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);
+  border:2px solid transparent;font-size:15px}
+.brow.me{border-color:var(--broth);background:rgba(240,178,58,.14)}
+.brow .rank{width:34px;font-weight:900;opacity:.7}
+.brow .rank.top{color:var(--gold);opacity:1}
+.brow .who{flex:1;font-weight:800;letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow .sc{font-weight:900;color:var(--broth)}
+.brow .extra{font-size:11px;opacity:.55;width:64px;text-align:right}
+select.picker{width:100%;padding:11px 12px;border-radius:12px;border:2px solid var(--stroke);
+  background:rgba(0,0,0,.45);color:var(--paper);font-family:var(--font);font-size:15px;margin-bottom:8px}
+.who-mini{font-size:12px;letter-spacing:.16em;opacity:.7;margin-top:10px}
+#countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:6}
+#countdown span{font-size:clamp(90px,20vw,190px);font-weight:900;color:var(--paper);
+  text-shadow:0 0 60px rgba(255,140,60,.8);animation:cd .8s ease-out}
+@keyframes cd{0%{transform:scale(2.2);opacity:0}30%{transform:scale(1);opacity:1}100%{transform:scale(.86);opacity:0}}
+#toast{position:absolute;left:50%;top:34%;transform:translateX(-50%);z-index:6;pointer-events:none;
+  font-size:clamp(30px,6vw,58px);font-weight:900;letter-spacing:.08em;opacity:0;text-align:center}
+#toast.show{animation:toast 1.05s ease-out}
+@keyframes toast{0%{opacity:0;transform:translateX(-50%) scale(.6)}18%{opacity:1;transform:translateX(-50%) scale(1.1)}
+70%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) scale(1.05)}}
+#debug{position:absolute;left:16px;bottom:16px;font-size:12px;line-height:1.6;background:rgba(0,0,0,.65);
+  padding:10px 12px;border-radius:10px;z-index:7;white-space:pre;display:none;font-family:ui-monospace,monospace}
+.hint{font-size:12px;letter-spacing:.14em;opacity:.5;margin-top:16px}
+.reduced .pulse-anim,body.reduced #hudCombo.pop{animation:none!important}
+@media(max-width:640px){
+  .hud-val{font-size:20px}#hudScore .hud-val{font-size:24px}#hudCenter{gap:14px}
+  .panel{padding:22px 18px;border-radius:20px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-box" id="hudLives"><div class="hud-label">LIVES</div><div id="hearts"></div></div>
+    <div class="hud-box" id="hudCenter">
+      <div id="hudLevel"><div class="hud-label">LEVEL</div><div class="hud-val" id="levelVal">1</div></div>
+      <div id="hudTime"><div class="hud-label">TIME</div><div class="hud-val" id="timeVal">90</div></div>
+    </div>
+    <div class="hud-box" id="hudScore"><div class="hud-label">SCORE</div><div class="hud-val" id="scoreVal">0</div></div>
+    <div id="rainbowBar"><div class="rb-label">RAINBOW MODE</div><div class="rb-track"><div class="rb-fill" id="rbFill"></div></div></div>
+    <div id="hudCombo">COMBO x1</div>
+    <button class="btn small" id="pauseBtn" style="width:auto">II PAUSE</button>
+  </div>
+
+  <div id="countdown" style="display:none"><span id="cdText">3</span></div>
+  <div id="toast"></div>
+  <div id="debug"></div>
+
+  <!-- MENU -->
+  <div class="screen" id="scMenu">
+    <h1 class="logo">RAMEN<br>RUSH</h1>
+    <div class="logo-sub">ラーメン ラッシュ · RHYTHM ARCADE</div>
+    <div style="width:min(340px,86vw)">
+      <button class="btn primary" id="btnPlay">PLAY</button>
+      <div class="row"><button class="btn" id="btnShop">SHOP</button><button class="btn" id="btnScores">SCORES</button></div>
+      <div class="row"><button class="btn" id="btnBoard">RANKING</button><button class="btn" id="btnAccount">ACCOUNT</button></div>
+      <button class="btn" id="btnSettings">SETTINGS</button>
+      <div class="who-mini" id="whoMini"></div>
+    </div>
+    <div class="hint">Ramenler müziğin ritmine düşer · 90 saniye · en yüksek skoru yap</div>
+  </div>
+
+  <!-- ACCOUNT -->
+  <div class="screen hidden" id="scAuth"><div class="scrim"></div>
+    <div class="panel">
+      <h2 class="title">ACCOUNT</h2><div class="sub" id="authSub">SKORUNU SIRALAMAYA GÖNDER</div>
+      <div id="authForm">
+        <div class="field"><label>KULLANICI ADI</label><input id="inpUser" maxlength="16" autocomplete="username" placeholder="3-16 karakter, a-z 0-9 _"></div>
+        <div class="field"><label>ŞİFRE</label><input id="inpPass" type="password" maxlength="64" autocomplete="current-password" placeholder="en az 6 karakter"></div>
+        <div class="msg" id="authMsg"></div>
+        <button class="btn primary" id="btnLogin">GİRİŞ YAP</button>
+        <button class="btn" id="btnSignup">YENİ HESAP OLUŞTUR</button>
+      </div>
+      <div id="authInfo" style="display:none">
+        <div class="big-score" style="font-size:32px" id="authWho">-</div>
+        <div class="msg ok" id="authStats"></div>
+        <button class="btn" id="btnLogout">ÇIKIŞ YAP</button>
+      </div>
+      <button class="btn primary" style="margin-top:12px" id="btnAuthBack">GERİ</button>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="screen hidden" id="scBoard"><div class="scrim"></div>
+    <div class="panel wide">
+      <h2 class="title">RANKING</h2><div class="sub">EN YÜKSEK SKORLAR</div>
+      <select class="picker" id="boardPick"></select>
+      <div class="board" id="boardList"></div>
+      <div class="msg" id="boardMsg"></div>
+      <button class="btn primary" id="btnBoardBack">GERİ</button>
+    </div>
+  </div>
+
+  <!-- SONG SELECT -->
+  <div class="screen hidden" id="scSongs"><div class="scrim"></div>
+    <div class="panel wide">
+      <h2 class="title">SELECT TRACK</h2><div class="sub">RAMENLER BU RİTİMDE DÜŞECEK · MP3 GEREKMEZ</div>
+      <div class="songs" id="songList"></div>
+      <div class="sync"><span>SYNC</span><input type="range" id="syncSlider" min="-300" max="300" step="10" value="0"><span id="syncVal">0 ms</span></div>
+      <input type="file" id="fileAll" accept="audio/*" multiple style="display:none">
+      <button class="btn small" id="btnLoadAll">KENDİ MP3'LERİNİ YÜKLE (opsiyonel, sırayla eşlenir)</button>
+      <button class="btn primary" id="btnSongBack" style="margin-top:10px">GERİ</button>
+    </div>
+  </div>
+
+  <!-- TUTORIAL -->
+  <div class="screen hidden" id="scTutorial"><div class="scrim"></div>
+    <div class="panel">
+      <h2 class="title">NASIL OYNANIR</h2><div class="sub">HOW TO PLAY</div>
+      <div class="list">
+        Kaseyi mouse ile hareket ettir.<br>
+        <b>Normal noodle</b> yakala, puan kazan.<br>
+        <b>Spicy noodle</b> iki katı puan verir.<br>
+        <b>Rainbow noodle</b> 10 saniyelik Rainbow Mode açar.<br>
+        <b>Golden noodle</b> büyük bonus verir.<br>
+        <b>Rotten noodle</b>'dan kaç: skor sıfırlanır, can gider.<br>
+        90 saniyede en yüksek skoru yap.<br><b>Ramenler müziğin vuruşuna göre düşer</b> — ritme uy.
+      </div>
+      <button class="btn primary" id="btnTutOk">BAŞLA</button>
+    </div>
+  </div>
+
+  <!-- PAUSE -->
+  <div class="screen hidden" id="scPause"><div class="scrim"></div>
+    <div class="panel">
+      <h2 class="title">PAUSED</h2><div class="sub">ESC ile devam et</div>
+      <button class="btn primary" id="btnResume">RESUME</button>
+      <button class="btn" id="btnRestart">RESTART</button>
+      <button class="btn" id="btnQuit">QUIT</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen hidden" id="scResults"><div class="scrim"></div>
+    <div class="panel wide">
+      <h2 class="title" id="resTitle">TIME'S UP</h2>
+      <div class="sub">FINAL SCORE</div>
+      <div class="big-score" id="resScore">0</div>
+      <div class="newrec" id="resNew" style="display:none">NEW HIGH SCORE</div>
+      <div class="coins" id="resCoins">+0 coins</div>
+      <div class="msg" id="resNet"></div>
+      <div class="stats">
+        <div class="stat"><span>Best score</span><span id="stBest">0</span></div>
+        <div class="stat"><span>Level</span><span id="stLevel">1</span></div>
+        <div class="stat"><span>Max combo</span><span id="stCombo">0</span></div>
+        <div class="stat"><span>Noodles caught</span><span id="stCaught">0</span></div>
+        <div class="stat"><span>Spicy caught</span><span id="stSpicy">0</span></div>
+        <div class="stat"><span>Rainbow caught</span><span id="stRainbow">0</span></div>
+        <div class="stat"><span>Golden caught</span><span id="stGolden">0</span></div>
+        <div class="stat"><span>Rotten caught</span><span id="stRotten">0</span></div>
+        <div class="stat"><span>Time survived</span><span id="stTime">0s</span></div>
+        <div class="stat"><span>Total coins</span><span id="stCoins">0</span></div>
+      </div>
+      <button class="btn primary" id="btnAgain">PLAY AGAIN</button>
+      <button class="btn" id="btnPickSong">CHANGE TRACK</button>
+      <div class="row"><button class="btn" id="btnResShop">SHOP</button><button class="btn" id="btnMenu">MENU</button></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen hidden" id="scSettings"><div class="scrim"></div>
+    <div class="panel">
+      <h2 class="title">SETTINGS</h2><div class="sub">AYARLAR</div>
+      <div id="settingsList"></div>
+      <button class="btn primary" style="margin-top:18px" id="btnSetBack">GERİ</button>
+    </div>
+  </div>
+
+  <!-- SCORES -->
+  <div class="screen hidden" id="scScores"><div class="scrim"></div>
+    <div class="panel">
+      <h2 class="title">HIGH SCORE</h2><div class="sub">KAYITLI İSTATİSTİKLER</div>
+      <div class="big-score" id="hsBest">0</div>
+      <div class="stats" style="grid-template-columns:1fr">
+        <div class="stat"><span>Best combo</span><span id="hsCombo">0</span></div>
+        <div class="stat"><span>Highest level</span><span id="hsLevel">1</span></div>
+        <div class="stat"><span>Total coins</span><span id="hsCoins">0</span></div>
+      </div>
+      <button class="btn primary" id="btnScoresBack">GERİ</button>
+      <button class="btn small" id="btnWipe" style="opacity:.55">KAYITLARI SIFIRLA</button>
+    </div>
+  </div>
+
+  <!-- SHOP -->
+  <div class="screen hidden" id="scShop"><div class="scrim"></div>
+    <div class="panel wide">
+      <h2 class="title">SHOP</h2>
+      <div class="wallet" id="shopWallet">0 coins</div>
+      <div class="shop-tabs" id="shopTabs"></div>
+      <div class="grid" id="shopGrid"></div>
+      <button class="btn primary" style="margin-top:16px" id="btnShopBack">GERİ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   RAMEN RUSH — tek dosya, bağımlılıksız HTML5 Canvas arcade oyunu
+   Bölümler: CONFIG > UTILS > STORAGE > AUDIO > PARTICLES > BACKGROUND >
+             PLAYER > NOODLES > SPAWN > SCORE/COMBO/LEVEL > UI > GAME
+   ========================================================================= */
+
+/* ---------------------------------------------------------------- CONFIG */
+const CONFIG = {
+  GAME_DURATION: 90,
+  STARTING_LIVES: 3,
+  STARTING_LEVEL: 1,
+
+  NORMAL_BASE_SCORE: 10,       // level basına taban puan
+  SPICY_MULTIPLIER: 2,
+  RAINBOW_DURATION: 10,
+  RAINBOW_MULTIPLIER: 2,
+  RAINBOW_SPEED_BOOST: 1.22,
+  RAINBOW_SPAWN_BOOST: 1.55,
+  MAX_MULTIPLIER: 6,           // toplam çarpan tavanı
+
+  ROTTEN_SCORE_RESET: true,
+  ROTTEN_LIFE_LOSS: 1,
+
+  GOLDEN_ENABLED: true,
+  GOLDEN_BASE: 500,
+  GOLDEN_PER_LEVEL: 50,
+  MEGA_ENABLED: true,
+  MEGA_EVERY_LEVELS: 5,
+  MEGA_BONUS: 1000,
+
+  // spawn ağırlıkları (yüzde hissi veren göreli ağırlıklar)
+  WEIGHTS: { normal: 70, spicy: 20, rainbow: 8, rotten: 2, golden: 0.7 },
+  ROTTEN_COOLDOWN: 7,          // sn — art arda çürük engeli
+  RAINBOW_COOLDOWN: 9,
+  GOLDEN_COOLDOWN: 22,
+  SAFE_START: 6,               // ilk saniyelerde çürük yok
+
+  BASE_FALL_SPEED: 195,        // px/sn (900px referans yükseklikte)
+  BASE_SPAWN_INTERVAL: 1.05,   // sn
+  MIN_SPAWN_INTERVAL: 0.24,
+  BOWL_WIDTH: 170,
+  CATCH_PAD: 26,               // forgiving collision payı (px)
+
+  MAX_PARTICLES: 260,
+  COIN_DIVISOR: 100,
+  COMBO_TIERS: [[30,3],[20,2],[10,1.5],[5,1.2],[0,1]],
+  DEBUG: false,
+
+  /* ---- SUPABASE (hesap + sıralama). Boş bırakılırsa oyun tamamen offline çalışır. ---- */
+  SUPABASE: {
+    url: '',            // örn: https://xxxx.supabase.co
+    anonKey: '',        // publishable / anon key
+    emailDomain: 'ramenrush.app'   // kullanıcı adı -> sahte e-posta
+  },
+
+  /* ---- RİTİM MOTORU ---- */
+  RHYTHM: {
+    SUBDIV: 2,            // vuruş başına grid adımı (2 = 8'lik nota gridi)
+    LATE_SKIP: 0.25,      // bu kadar geciken slot atlanır (sekme donması vb.)
+    // Şarkının yüzdesine göre bölümler: pattern 16 adımlık grid, fall = düşüş süresi (sn)
+    SECTIONS: [
+      { to:0.17, fall:1.60, pattern:'1000000010000000' },
+      { to:0.33, fall:1.45, pattern:'1000100010000000' },
+      { to:0.55, fall:1.32, pattern:'1000100010001000' },
+      { to:0.72, fall:1.20, pattern:'1010100010001000' },
+      { to:0.88, fall:1.10, pattern:'1010100010101000' },
+      { to:1.01, fall:1.00, pattern:'1010101010111010' }   // final rush
+    ]
+  },
+  BOWL_SPEED: 1050,       // kasenin pratik yatay hızı (px/sn) — adil x mesafesi için
+
+  // Parçalar kodun içinde üretilir (MP3 gerekmez). audio/NN.mp3 varsa onu kullanır.
+  TRACKS: [
+    { id:'t1',  name:'Midnight Ramen Stall', bpm:124, diff:'EASY',   style:'citypop',  root:57, mode:'minor', seed:1101, file:'audio/01.mp3' },
+    { id:'t2',  name:'Noren Dance',          bpm:130, diff:'EASY',   style:'kawaii',   root:60, mode:'major', seed:2202, file:'audio/02.mp3' },
+    { id:'t3',  name:'Chopstick Shuffle',    bpm:136, diff:'NORMAL', style:'shuffle',  root:55, mode:'major', seed:3303, file:'audio/03.mp3' },
+    { id:'t4',  name:'Neon Broth',           bpm:142, diff:'NORMAL', style:'disco',    root:58, mode:'minor', seed:4404, file:'audio/04.mp3' },
+    { id:'t5',  name:'Spicy Miso Fire',      bpm:150, diff:'HARD',   style:'rock',     root:52, mode:'minor', seed:5505, file:'audio/05.mp3' },
+    { id:'t6',  name:'Rainbow Overdrive',    bpm:156, diff:'HARD',   style:'hardcore', root:62, mode:'major', seed:6606, file:'audio/06.mp3' },
+    { id:'t7',  name:'Tokyo Rain Groove',    bpm:146, diff:'NORMAL', style:'lofi',     root:53, mode:'minor', seed:7707, file:'audio/07.mp3' },
+    { id:'t8',  name:'Dragon Wok',           bpm:160, diff:'HARD',   style:'taiko',    root:50, mode:'minor', seed:8808, file:'audio/08.mp3' },
+    { id:'t9',  name:'Golden Hour Slurp',    bpm:148, diff:'NORMAL', style:'funk',     root:56, mode:'major', seed:9909, file:'audio/09.mp3' },
+    { id:'t10', name:'Final Rush',           bpm:174, diff:'EXPERT', style:'dnb',      root:49, mode:'minor', seed:1010, file:'audio/10.mp3' },
+    { id:'classic', name:'Classic (müziksiz)', bpm:0, diff:'FREE', style:null, file:null }
+  ]
+};
+
+// Level XP eşikleri (XP = maç boyunca kazanılan toplam puan)
+CONFIG.LEVEL_THRESHOLDS = (function(){
+  const base = [0,500,1200,2000,3000,4500,6000,8000,10500,13500];
+  for (let i = base.length; i < 40; i++) base.push(base[i-1] + 3000 + (i-10)*600);
+  return base;
+})();
+
+/* ---------------------------------------------------------------- UTILS */
+const TAU = Math.PI * 2;
+const clamp = (v,a,b) => v < a ? a : (v > b ? b : v);
+const lerp  = (a,b,t) => a + (b-a) * t;
+const rand  = (a,b) => a + Math.random() * (b-a);
+const randi = (a,b) => Math.floor(rand(a, b+1));
+const fmt   = n => Math.floor(n).toLocaleString('en-US');
+const $     = id => document.getElementById(id);
+
+function deepMerge(base, patch){
+  if (patch === null || typeof patch !== 'object' || Array.isArray(patch)) return base;
+  const out = Array.isArray(base) ? base.slice() : Object.assign({}, base);
+  for (const k in patch){
+    if (!Object.prototype.hasOwnProperty.call(patch, k)) continue;
+    const bv = out[k], pv = patch[k];
+    out[k] = (bv && typeof bv === 'object' && !Array.isArray(bv)) ? deepMerge(bv, pv) : pv;
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------- SKINS */
+const SKINS = {
+  bowl: [
+    { id:'classic', name:'Classic',  price:0,    body:'#d94f3d', rim:'#f6ead2', band:'#f0b23a', glow:'#ff8a4c' },
+    { id:'sakura',  name:'Sakura',   price:150,  body:'#f28cb4', rim:'#fff0f6', band:'#ff5f9e', glow:'#ff8fc0' },
+    { id:'neon',    name:'Neon',     price:320,  body:'#14203c', rim:'#3ce7ff', band:'#9b5cff', glow:'#3ce7ff' },
+    { id:'golden',  name:'Golden',   price:650,  body:'#c9911c', rim:'#ffe9a8', band:'#fff3cc', glow:'#ffd35c' },
+    { id:'dragon',  name:'Dragon',   price:1100, body:'#221033', rim:'#b06cff', band:'#ff4d6d', glow:'#b06cff' }
+  ],
+  chopsticks: [
+    { id:'bamboo', name:'Bamboo', price:0,   body:'#c9a06a', tip:'#8a6a3d' },
+    { id:'red',    name:'Red',    price:90,  body:'#e0463c', tip:'#8f1f1c' },
+    { id:'sakura', name:'Sakura', price:170, body:'#ffc9dd', tip:'#e06ea0' },
+    { id:'neon',   name:'Neon',   price:280, body:'#3ce7ff', tip:'#9b5cff' }
+  ],
+  background: [
+    { id:'tokyo',  name:'Tokyo Night',  price:0,   sky1:'#0b0a20', sky2:'#2a1338', accent:'#3ce7ff', lantern:'#ff4d3d', petals:false },
+    { id:'sakura', name:'Sakura Night', price:220, sky1:'#150a24', sky2:'#4a1c42', accent:'#ff8fc0', lantern:'#ff77a8', petals:true  },
+    { id:'street', name:'Ramen Street', price:380, sky1:'#170d12', sky2:'#3d1a16', accent:'#f0b23a', lantern:'#ff6a2a', petals:false },
+    { id:'neon',   name:'Neon Tokyo',   price:560, sky1:'#050a20', sky2:'#131a5c', accent:'#9b5cff', lantern:'#3ce7ff', petals:false }
+  ],
+  effect: [
+    { id:'sakura',  name:'Sakura Burst',  price:0,   colors:['#ff8fc0','#ffd0e2','#ff5f9e'] },
+    { id:'fire',    name:'Fire Burst',    price:140, colors:['#ff7a2f','#ffd35c','#e8443a'] },
+    { id:'rainbow', name:'Rainbow Burst', price:300, colors:['#ff4d6d','#ffb03a','#7fe86b','#3ce7ff','#9b5cff'] }
+  ]
+};
+const skinOf = (cat, id) => SKINS[cat].find(s => s.id === id) || SKINS[cat][0];
+
+/* ---------------------------------------------------------------- STORAGE */
+const Store = {
+  KEY: 'noodlerain.save.v1',
+  data: null,
+  defaults(){
+    return {
+      bestScore:0, bestCombo:0, highestLevel:1, totalCoins:0, tutorialSeen:false,
+      unlocked:{ bowl:['classic'], chopsticks:['bamboo'], background:['tokyo'], effect:['sakura'] },
+      selected:{ bowl:'classic', chopsticks:'bamboo', background:'tokyo', effect:'sakura' },
+      settings:{ sound:true, music:true, particles:true, shake:true, reducedMotion:false, audioOffset:0,
+                 masterVol:0.9, musicVol:0.8, sfxVol:0.8, perf:'auto', haptics:true },
+      auth:{ token:null, refresh:null, expires:0, username:null, userId:null },
+      pending:[]
+    };
+  },
+  load(){
+    const def = this.defaults();
+    try{
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw){ this.data = def; return; }
+      const parsed = JSON.parse(raw);
+      this.data = deepMerge(def, (parsed && typeof parsed === 'object') ? parsed : {});
+      // bozuk veri koruması
+      for (const cat of ['bowl','chopsticks','background','effect']){
+        if (!Array.isArray(this.data.unlocked[cat])) this.data.unlocked[cat] = def.unlocked[cat].slice();
+        if (!this.data.unlocked[cat].includes(def.selected[cat])) this.data.unlocked[cat].push(def.selected[cat]);
+        if (!this.data.unlocked[cat].includes(this.data.selected[cat])) this.data.selected[cat] = def.selected[cat];
+      }
+      if (!this.data.auth || typeof this.data.auth !== 'object') this.data.auth = def.auth;
+      if (!Array.isArray(this.data.pending)) this.data.pending = [];
+      ['bestScore','bestCombo','highestLevel','totalCoins'].forEach(k=>{
+        if (typeof this.data[k] !== 'number' || !isFinite(this.data[k])) this.data[k] = def[k];
+      });
+    }catch(e){ this.data = def; }
+  },
+  save(){ try{ localStorage.setItem(this.KEY, JSON.stringify(this.data)); }catch(e){} },
+  reset(){ this.data = this.defaults(); this.save(); }
+};
+
+/* ---------------------------------------------------------------- AUDIO */
+const Sound = {
+  ctx:null, master:null, sfx:null, musicGain:null,
+  musicOn:false, nextNote:0, step:0, tempo:0.28,
+  init(){
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    this.ctx = new AC();
+    this.master = this.ctx.createGain(); this.master.connect(this.ctx.destination);
+    this.sfx = this.ctx.createGain(); this.sfx.connect(this.master);
+    this.musicGain = this.ctx.createGain(); this.musicGain.connect(this.master);
+    this.applyVolumes();
+  },
+  // Ayarlardaki seviyeler tek yerden uygulanır
+  applyVolumes(){
+    const st = Store.data.settings;
+    if (this.master)    this.master.gain.value    = 0.85 * (st.masterVol !== undefined ? st.masterVol : 0.9);
+    if (this.sfx)       this.sfx.gain.value       = (st.sfxVol !== undefined ? st.sfxVol : 0.8);
+    if (this.musicGain) this.musicGain.gain.value = 0.5 * (st.musicVol !== undefined ? st.musicVol : 0.8);
+    if (Proc.out)       Proc.out.gain.value       = 1.15 * (st.musicVol !== undefined ? st.musicVol : 0.8);
+    if (Music.el)       Music.el.volume           = clamp(st.musicVol !== undefined ? st.musicVol : 0.8, 0, 1);
+  },
+  unlock(){ this.init(); if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  tone(freq, dur, type, vol, slide, dest){
+    if (!this.ctx || !Store.data.settings.sound) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, slide), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || 0.18, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(dest || this.sfx); o.start(t); o.stop(t + dur + 0.02);
+  },
+  noise(dur, vol, hp){
+    if (!this.ctx || !Store.data.settings.sound) return;
+    const t = this.ctx.currentTime, len = Math.floor(this.ctx.sampleRate * dur);
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * (1 - i/len);
+    const src = this.ctx.createBufferSource(); src.buffer = buf;
+    const f = this.ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp || 500;
+    const g = this.ctx.createGain(); g.gain.value = vol || 0.12;
+    src.connect(f); f.connect(g); g.connect(this.sfx); src.start(t);
+  },
+  play(name, n){
+    if (!this.ctx) return;
+    switch(name){
+      case 'catch':  this.tone(520 + Math.min(24, n||0)*22, 0.09, 'triangle', 0.16, 880); break;
+      case 'spicy':  this.tone(340, 0.14, 'sawtooth', 0.13, 720); this.noise(0.10, 0.07, 900); break;
+      case 'rainbow':[0,4,7,12,16].forEach((s,i)=>setTimeout(()=>this.tone(523.25*Math.pow(2,s/12),0.26,'triangle',0.15),i*55)); break;
+      case 'golden': [0,7,12].forEach((s,i)=>setTimeout(()=>this.tone(783.99*Math.pow(2,s/12),0.20,'sine',0.16),i*70)); break;
+      case 'mega':   this.tone(160, 0.5, 'square', 0.14, 420); break;
+      case 'rotten': this.tone(220, 0.32, 'sawtooth', 0.16, 70); this.noise(0.25, 0.10, 260); break;
+      case 'miss':   this.tone(300, 0.10, 'sine', 0.07, 190); break;
+      case 'level':  [0,4,7,12].forEach((s,i)=>setTimeout(()=>this.tone(392*Math.pow(2,s/12),0.18,'square',0.11),i*60)); break;
+      case 'button': this.tone(600, 0.05, 'square', 0.07, 400); break;
+      case 'over':   [12,7,3,0].forEach((s,i)=>setTimeout(()=>this.tone(392*Math.pow(2,s/12),0.30,'triangle',0.13),i*130)); break;
+      case 'record': [0,5,9,12,17].forEach((s,i)=>setTimeout(()=>this.tone(523.25*Math.pow(2,s/12),0.34,'sine',0.15),i*90)); break;
+      case 'countdown': this.tone(n ? 880 : 520, 0.14, 'square', 0.11); break;
+    }
+  },
+  startMusic(){ if (!this.ctx) return; this.musicOn = true; this.nextNote = this.ctx.currentTime + 0.1; this.step = 0; },
+  stopMusic(){ this.musicOn = false; },
+  updateMusic(rainbow){
+    if (!this.musicOn || !this.ctx || !Store.data.settings.music || !Store.data.settings.sound) return;
+    const dur = rainbow ? 0.185 : 0.275;
+    const scale = [0,3,5,7,10,12,15];               // pentatonik-minör hissi
+    const bassNotes = [65.41, 87.31, 77.78, 98.00]; // basit döngü
+    while (this.nextNote < this.ctx.currentTime + 0.12){
+      const t = this.nextNote, s = this.step;
+      const g = this.ctx.createGain(); g.connect(this.musicGain);
+      const semis = scale[(s * 3 + (s % 5)) % scale.length] + (s % 8 === 0 ? 12 : 0);
+      const freq = 261.63 * Math.pow(2, semis/12) * (rainbow ? 2 : 1);
+      const o = this.ctx.createOscillator();
+      o.type = rainbow ? 'square' : 'triangle'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(rainbow ? 0.10 : 0.07, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.9);
+      o.connect(g); o.start(t); o.stop(t + dur);
+      if (s % 4 === 0){
+        const bo = this.ctx.createOscillator(), bg = this.ctx.createGain();
+        bo.type = 'sine'; bo.frequency.setValueAtTime(bassNotes[(s/4) % bassNotes.length], t);
+        bg.gain.setValueAtTime(0.0001, t);
+        bg.gain.exponentialRampToValueAtTime(0.12, t + 0.01);
+        bg.gain.exponentialRampToValueAtTime(0.0001, t + dur * 2);
+        bo.connect(bg); bg.connect(this.musicGain); bo.start(t); bo.stop(t + dur * 2.1);
+      }
+      this.nextNote += dur; this.step++;
+    }
+  }
+};
+
+/* ---------------------------------------------------------------- PARTICLES (pooled) */
+const Particles = {
+  pool: [], active: 0,
+  init(){
+    this.pool.length = 0;
+    for (let i = 0; i < CONFIG.MAX_PARTICLES; i++)
+      this.pool.push({ on:false, x:0,y:0,vx:0,vy:0,life:0,max:1,size:3,color:'#fff',shape:'dot',grav:0,rot:0,rs:0 });
+  },
+  get(){
+    for (let i = 0; i < this.pool.length; i++) if (!this.pool[i].on) return this.pool[i];
+    return null;
+  },
+  clear(){ for (const p of this.pool) p.on = false; },
+  spawn(x, y, opt){
+    if (!Store.data.settings.particles) return;
+    if (this.active >= Perf.particles()) return;      // düşük FX modunda tavan
+    const p = this.get(); if (!p) return;
+    this.active++;
+    p.on = true; p.x = x; p.y = y;
+    p.vx = opt.vx; p.vy = opt.vy; p.life = p.max = opt.life;
+    p.size = opt.size; p.color = opt.color; p.shape = opt.shape || 'dot';
+    p.grav = opt.grav === undefined ? 420 : opt.grav;
+    p.rot = rand(0, TAU); p.rs = rand(-6, 6);
+  },
+  burst(x, y, type, power){
+    if (!Store.data.settings.particles) return;
+    const reduce = Store.data.settings.reducedMotion ? 0.45 : 1;
+    const eff = skinOf('effect', Store.data.selected.effect);
+    let colors, shape = 'dot', n = Math.round((power || 10) * reduce);
+    switch(type){
+      case 'normal':  colors = eff.colors; shape = eff.id === 'sakura' ? 'petal' : 'dot'; break;
+      case 'spicy':   colors = ['#ff7a2f','#ffd35c','#e8443a']; shape='dot'; break;
+      case 'rainbow': colors = ['#ff4d6d','#ffb03a','#7fe86b','#3ce7ff','#9b5cff']; shape='star'; break;
+      case 'golden':  colors = ['#ffd35c','#fff3cc','#ffae00']; shape='star'; break;
+      case 'mega':    colors = ['#ffd35c','#ff7a2f','#f6ead2']; shape='star'; break;
+      case 'rotten':  colors = ['#7fd94a','#4b8c2a','#c9e88a']; shape='square'; break;
+      case 'level':   colors = ['#3ce7ff','#f6ead2','#9b5cff']; shape='star'; break;
+      default:        colors = ['#f6ead2']; break;
+    }
+    for (let i = 0; i < n; i++){
+      const a = rand(0, TAU), sp = rand(70, 300);
+      this.spawn(x, y, {
+        vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 60, life: rand(0.4, 0.95),
+        size: rand(3, 8), color: colors[randi(0, colors.length-1)], shape,
+        grav: shape === 'petal' ? 120 : 460
+      });
+    }
+  },
+  update(dt){
+    this.active = 0;
+    for (const p of this.pool){
+      if (!p.on) continue;
+      p.life -= dt;
+      if (p.life <= 0){ p.on = false; continue; }
+      p.vy += p.grav * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.rs * dt;
+      this.active++;
+    }
+  },
+  draw(ctx){
+    for (const p of this.pool){
+      if (!p.on) continue;
+      const a = clamp(p.life / p.max, 0, 1);
+      ctx.save(); ctx.globalAlpha = a; ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color;
+      const s = p.size;
+      if (p.shape === 'star'){
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++){
+          const r = i % 2 ? s*0.42 : s, an = (i/10)*TAU - Math.PI/2;
+          i ? ctx.lineTo(Math.cos(an)*r, Math.sin(an)*r) : ctx.moveTo(Math.cos(an)*r, Math.sin(an)*r);
+        }
+        ctx.closePath(); ctx.fill();
+      } else if (p.shape === 'square'){
+        ctx.fillRect(-s/2, -s/2, s, s);
+      } else if (p.shape === 'petal'){
+        ctx.beginPath(); ctx.ellipse(0, 0, s*0.55, s, 0, 0, TAU); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(0, 0, s*0.55, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+};
+
+/* ---------------------------------------------------------------- FLOATING TEXT */
+const Floats = {
+  list: [],
+  add(x, y, text, color, size){ this.list.push({ x, y, text, color, size: size || 22, life: 0.9, max: 0.9 }); },
+  clear(){ this.list.length = 0; },
+  update(dt){
+    for (let i = this.list.length - 1; i >= 0; i--){
+      const f = this.list[i];
+      f.life -= dt; f.y -= 52 * dt;
+      if (f.life <= 0) this.list.splice(i, 1);
+    }
+  },
+  draw(ctx){
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const f of this.list){
+      const t = f.life / f.max, pop = 1 + (1-t) * 0.22;
+      ctx.save(); ctx.globalAlpha = clamp(t*1.6, 0, 1); ctx.translate(f.x, f.y); ctx.scale(pop, pop);
+      ctx.font = '900 ' + f.size + 'px ' + FONT;
+      ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(8,5,16,.85)'; ctx.strokeText(f.text, 0, 0);
+      ctx.fillStyle = f.color; ctx.fillText(f.text, 0, 0);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+};
+const FONT = '"Futura","Century Gothic","Trebuchet MS","Segoe UI",sans-serif';
+
+/* ---------------------------------------------------------------- BACKGROUND */
+const BG = {
+  cache: null, cw: 0, ch: 0, palId: '',
+  rain: [], lanterns: [], petals: [], steam: [], t: 0,
+
+  build(W, H, pal){
+    // Statik katman offscreen canvas'a bir kez çizilir (performans)
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.floor(W)); c.height = Math.max(1, Math.floor(H));
+    const x = c.getContext('2d');
+    const horizon = H * 0.58;
+
+    const sky = x.createLinearGradient(0, 0, 0, horizon);
+    sky.addColorStop(0, pal.sky1); sky.addColorStop(1, pal.sky2);
+    x.fillStyle = sky; x.fillRect(0, 0, W, horizon);
+
+    // yıldızlar
+    x.fillStyle = 'rgba(255,255,255,.5)';
+    for (let i = 0; i < 90; i++){
+      const sx = rand(0, W), sy = rand(0, horizon * 0.75), r = rand(0.4, 1.4);
+      x.globalAlpha = rand(0.2, 0.8); x.beginPath(); x.arc(sx, sy, r, 0, TAU); x.fill();
+    }
+    x.globalAlpha = 1;
+
+    // uzak şehir silüeti
+    x.fillStyle = 'rgba(6,4,16,.72)';
+    let bx = -40;
+    while (bx < W + 40){
+      const bw = rand(40, 110), bh = rand(H*0.10, H*0.30);
+      x.fillRect(bx, horizon - bh, bw, bh);
+      x.fillStyle = 'rgba(' + [255,220,150].join(',') + ',.5)';
+      for (let wy = horizon - bh + 12; wy < horizon - 14; wy += 18){
+        for (let wx = bx + 8; wx < bx + bw - 10; wx += 16){
+          if (Math.random() < 0.35) x.fillRect(wx, wy, 5, 8);
+        }
+      }
+      x.fillStyle = 'rgba(6,4,16,.72)';
+      bx += bw + rand(6, 26);
+    }
+
+    // sokak zemini
+    const g2 = x.createLinearGradient(0, horizon, 0, H);
+    g2.addColorStop(0, 'rgba(24,14,30,1)'); g2.addColorStop(1, 'rgba(8,5,16,1)');
+    x.fillStyle = g2; x.fillRect(0, horizon, W, H - horizon);
+
+    // ramen dükkânı (merkezde ahşap cephe)
+    const shopW = Math.min(W * 0.62, 720), shopH = H * 0.30;
+    const sx0 = W/2 - shopW/2, sy0 = horizon - shopH;
+    x.fillStyle = '#3a2116'; x.fillRect(sx0, sy0, shopW, shopH);
+    x.fillStyle = 'rgba(255,255,255,.05)';
+    for (let i = 0; i < shopW; i += 26) x.fillRect(sx0 + i, sy0, 2, shopH);
+
+    // shoji pencereler (sıcak iç ışık)
+    const winW = shopW * 0.22, winH = shopH * 0.40, wy0 = sy0 + shopH * 0.34;
+    for (let i = 0; i < 3; i++){
+      const wx0 = sx0 + shopW * (0.08 + i * 0.31);
+      const wg = x.createLinearGradient(0, wy0, 0, wy0 + winH);
+      wg.addColorStop(0, 'rgba(255,214,140,.95)'); wg.addColorStop(1, 'rgba(255,160,70,.75)');
+      x.fillStyle = wg; x.fillRect(wx0, wy0, winW, winH);
+      x.strokeStyle = 'rgba(60,32,18,.9)'; x.lineWidth = 3;
+      for (let k = 1; k < 3; k++){
+        x.beginPath(); x.moveTo(wx0 + winW*k/3, wy0); x.lineTo(wx0 + winW*k/3, wy0 + winH); x.stroke();
+        x.beginPath(); x.moveTo(wx0, wy0 + winH*k/3); x.lineTo(wx0 + winW, wy0 + winH*k/3); x.stroke();
+      }
+      x.strokeRect(wx0, wy0, winW, winH);
+    }
+
+    // çatı + noren perde
+    x.fillStyle = '#241019'; x.fillRect(sx0 - 18, sy0 - 26, shopW + 36, 30);
+    x.fillStyle = pal.lantern;
+    x.globalAlpha = .9; x.fillRect(sx0 + shopW*0.06, sy0 + shopH*0.06, shopW*0.88, shopH*0.20); x.globalAlpha = 1;
+    x.fillStyle = 'rgba(255,240,220,.92)';
+    x.font = '900 ' + Math.round(shopH*0.13) + 'px ' + FONT;
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('ラーメン 屋台', W/2, sy0 + shopH*0.16);
+
+    // tezgâh
+    x.fillStyle = '#4a2a19'; x.fillRect(sx0 - 30, horizon - 6, shopW + 60, 22);
+
+    // yan neon tabelalar
+    x.strokeStyle = pal.accent; x.lineWidth = 4; x.globalAlpha = .85;
+    x.strokeRect(sx0 - 74, sy0 + 30, 48, shopH*0.5);
+    x.strokeRect(sx0 + shopW + 26, sy0 + 30, 48, shopH*0.5);
+    x.globalAlpha = 1;
+
+    // okunabilirlik için karartma + vinyet
+    const dark = x.createLinearGradient(0, 0, 0, H);
+    dark.addColorStop(0, 'rgba(5,3,12,.55)'); dark.addColorStop(0.55, 'rgba(5,3,12,.42)'); dark.addColorStop(1, 'rgba(5,3,12,.72)');
+    x.fillStyle = dark; x.fillRect(0, 0, W, H);
+
+    this.cache = c; this.cw = W; this.ch = H; this.palId = pal.id;
+
+    // dinamik öğeler
+    this.rain.length = 0;
+    const drops = Store.data.settings.reducedMotion ? Math.min(60, Perf.rain()) : Perf.rain();
+    for (let i = 0; i < drops; i++)
+      this.rain.push({ x: rand(0, W), y: rand(0, H), len: rand(9, 22), sp: rand(420, 780), a: rand(.10, .30) });
+
+    this.lanterns.length = 0;
+    const lx = [sx0 + shopW*0.14, sx0 + shopW*0.5, sx0 + shopW*0.86, sx0 - 60, sx0 + shopW + 60];
+    for (let i = 0; i < lx.length; i++)
+      this.lanterns.push({ x: lx[i], y: sy0 - 6 + rand(-8, 8), r: rand(17, 25), ph: rand(0, TAU), color: pal.lantern });
+
+    this.petals.length = 0;
+    if (pal.petals) for (let i = 0; i < 26; i++)
+      this.petals.push({ x: rand(0,W), y: rand(0,H), sp: rand(28,70), sw: rand(18,44), ph: rand(0,TAU), s: rand(4,8) });
+
+    this.steam.length = 0;
+    for (let i = 0; i < 3; i++) this.steam.push({ x: W/2 + (i-1)*shopW*0.28, y: horizon - 10, ph: rand(0,TAU) });
+    this.horizon = horizon;
+  },
+
+  update(dt, W, H){
+    this.t += dt;
+    for (const d of this.rain){
+      d.y += d.sp * dt;
+      if (d.y > H){ d.y = -20; d.x = rand(0, W); }
+    }
+    for (const p of this.petals){
+      p.y += p.sp * dt; p.ph += dt * 1.4;
+      p.x += Math.sin(p.ph) * p.sw * dt;
+      if (p.y > H){ p.y = -12; p.x = rand(0, W); }
+    }
+  },
+
+  draw(ctx, W, H, rainbow){
+    if (this.cache) ctx.drawImage(this.cache, 0, 0, W, H);
+
+    // fenerler (hafif sallanma + parıltı)
+    for (const l of this.lanterns){
+      const sway = Math.sin(this.t * 1.1 + l.ph) * 6;
+      const glow = 0.72 + Math.sin(this.t * 2.3 + l.ph) * 0.12;
+      ctx.save(); ctx.translate(l.x + sway, l.y);
+      ctx.globalAlpha = 0.20 * glow;
+      ctx.fillStyle = l.color; ctx.beginPath(); ctx.arc(0, 0, l.r * 3.2, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#2a1208'; ctx.fillRect(-3, -l.r - 16, 6, 16);
+      ctx.fillStyle = l.color; ctx.beginPath(); ctx.ellipse(0, 0, l.r, l.r * 1.25, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(40,16,8,.75)'; ctx.lineWidth = 2;
+      for (let i = -2; i <= 2; i++){
+        ctx.beginPath(); ctx.ellipse(0, i * l.r * 0.4, l.r * Math.sqrt(Math.max(0.05, 1 - (i*0.4)*(i*0.4))), 2, 0, 0, TAU); ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(255,240,220,.9)'; ctx.font = '900 ' + Math.round(l.r) + 'px ' + FONT;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('麺', 0, 0);
+      ctx.restore();
+    }
+
+    // buhar
+    ctx.save();
+    for (const s of this.steam){
+      for (let i = 0; i < 4; i++){
+        const k = (this.t * 0.32 + i * 0.25 + s.ph) % 1;
+        ctx.globalAlpha = (1 - k) * 0.16;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(s.x + Math.sin(k * 6 + s.ph) * 18, s.y - k * H * 0.22, 16 + k * 34, 0, TAU);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    // yağmur
+    ctx.strokeStyle = rainbow ? 'rgba(190,235,255,.55)' : 'rgba(190,215,255,.42)';
+    ctx.lineWidth = 1.4; ctx.beginPath();
+    for (const d of this.rain){
+      ctx.globalAlpha = d.a;
+      ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - 3, d.y + d.len);
+    }
+    ctx.stroke(); ctx.globalAlpha = 1;
+
+    // sakura yaprakları (arka plan skini)
+    for (const p of this.petals){
+      ctx.save(); ctx.globalAlpha = .55; ctx.translate(p.x, p.y); ctx.rotate(p.ph);
+      ctx.fillStyle = '#ff9ec8'; ctx.beginPath(); ctx.ellipse(0, 0, p.s*0.55, p.s, 0, 0, TAU); ctx.fill(); ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+
+    if (rainbow){
+      const hue = (this.t * 120) % 360;
+      ctx.fillStyle = 'hsla(' + hue + ',90%,60%,.10)';
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+};
+
+/* ---------------------------------------------------------------- PLAYER (bowl) */
+class Player {
+  constructor(){ this.reset(); }
+  reset(){
+    this.x = 0; this.targetX = 0; this.y = 0;
+    this.w = CONFIG.BOWL_WIDTH; this.h = 62;
+    this.tilt = 0; this.bounce = 0; this.flash = 0;
+  }
+  layout(W, H, S){
+    this.w = CONFIG.BOWL_WIDTH * S;
+    this.h = 62 * S;
+    this.y = H - this.h * 1.35 - (Perf.isTouch ? 86 : 18) * S;   // mobilde parmak kaseyi kapatmasın
+    if (this.x === 0){ this.x = W / 2; this.targetX = W / 2; }
+    this.x = clamp(this.x, this.w/2, W - this.w/2);
+  }
+  setTarget(px, W){ this.targetX = clamp(px, this.w/2, W - this.w/2); }
+  update(dt, W){
+    const prev = this.x;
+    this.x = lerp(this.x, this.targetX, clamp(dt * 18, 0, 1));   // smooth ama responsive
+    this.x = clamp(this.x, this.w/2, W - this.w/2);
+    const vel = (this.x - prev) / Math.max(dt, 0.0001);
+    this.tilt = lerp(this.tilt, clamp(vel / 2600, -0.22, 0.22), clamp(dt*10, 0, 1));
+    this.bounce = Math.max(0, this.bounce - dt * 4.2);
+    this.flash = Math.max(0, this.flash - dt * 3);
+  }
+  hit(){ this.bounce = 1; }
+  // Yakalama alanı (görselden biraz daha bağışlayıcı)
+  catchRect(){
+    const pad = CONFIG.CATCH_PAD;
+    return { l: this.x - this.w/2 - pad*0.45, r: this.x + this.w/2 + pad*0.45,
+             t: this.y - this.h*0.28 - pad*0.5, b: this.y + this.h*0.55 };
+  }
+  draw(ctx, t){
+    const bs = skinOf('bowl', Store.data.selected.bowl);
+    const cs = skinOf('chopsticks', Store.data.selected.chopsticks);
+    const w = this.w, h = this.h;
+    const squash = 1 + this.bounce * 0.10, squashY = 1 - this.bounce * 0.14;
+    ctx.save();
+    ctx.translate(this.x, this.y + this.bounce * 6);
+    ctx.rotate(this.tilt);
+    ctx.scale(squash, squashY);
+
+    // glow
+    ctx.shadowColor = bs.glow; ctx.shadowBlur = Perf.glow(26 + this.flash * 30);
+
+    // chopsticks (kasenin arkasında)
+    ctx.save(); ctx.rotate(-0.36);
+    for (let i = 0; i < 2; i++){
+      ctx.fillStyle = cs.body;
+      ctx.fillRect(w*0.16 + i*11, -h*1.5, 7, h*1.55);
+      ctx.fillStyle = cs.tip;
+      ctx.fillRect(w*0.16 + i*11, -h*1.5, 7, 12);
+    }
+    ctx.restore();
+
+    // erişte (kasenin içinden taşan)
+    ctx.fillStyle = '#f4d67a';
+    ctx.beginPath(); ctx.ellipse(0, -h*0.30, w*0.40, h*0.20, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#e0b64a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (let i = -2; i <= 2; i++){
+      ctx.beginPath();
+      for (let px = -w*0.36; px <= w*0.36; px += w*0.09){
+        const py = -h*0.30 + Math.sin(px*0.06 + i + t*2.2) * 5 + i*3;
+        px === -w*0.36 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+    // narutomaki
+    ctx.fillStyle = '#fff6ea'; ctx.beginPath(); ctx.arc(-w*0.20, -h*0.34, h*0.13, 0, TAU); ctx.fill();
+    ctx.strokeStyle = bs.band; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(-w*0.20, -h*0.34, h*0.07, 0, TAU); ctx.stroke();
+
+    // kase gövdesi
+    ctx.shadowBlur = 0;
+    const g = ctx.createLinearGradient(0, -h*0.2, 0, h*0.7);
+    g.addColorStop(0, bs.body); g.addColorStop(1, 'rgba(0,0,0,.55)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-w/2, -h*0.20);
+    ctx.quadraticCurveTo(-w*0.42, h*0.62, 0, h*0.62);
+    ctx.quadraticCurveTo(w*0.42, h*0.62, w/2, -h*0.20);
+    ctx.closePath(); ctx.fill();
+
+    // desen bandı
+    ctx.fillStyle = bs.band; ctx.globalAlpha = .9;
+    ctx.beginPath();
+    ctx.moveTo(-w*0.46, h*0.06); ctx.lineTo(w*0.46, h*0.06);
+    ctx.lineTo(w*0.42, h*0.24); ctx.lineTo(-w*0.42, h*0.24); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    for (let i = -3; i <= 3; i++) ctx.fillRect(i*w*0.11 - 3, h*0.09, 6, h*0.12);
+
+    // ağız kenarı
+    ctx.fillStyle = bs.rim;
+    ctx.beginPath(); ctx.ellipse(0, -h*0.20, w/2, h*0.15, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(0, -h*0.19, w/2 - 7*(w/170), h*0.11, 0, 0, TAU); ctx.fill();
+
+    // taban
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
+    ctx.fillRect(-w*0.14, h*0.60, w*0.28, h*0.10);
+    ctx.restore();
+  }
+}
+
+/* ---------------------------------------------------------------- NOODLES */
+const TYPE_STYLE = {
+  normal:  { dark:'#c78a1e', light:'#ffe08a', accent:'#fff3c4', glow:'#ffcf5c' },
+  spicy:   { dark:'#9b1f14', light:'#ff8a3c', accent:'#ffd08a', glow:'#ff5a2a' },
+  rotten:  { dark:'#2f5c17', light:'#8ede55', accent:'#d6ff9e', glow:'#7fd94a' },
+  golden:  { dark:'#a97c05', light:'#ffe27a', accent:'#fffbe6', glow:'#ffd35c' },
+  mega:    { dark:'#7a3f10', light:'#ffca66', accent:'#fff0c4', glow:'#ffae42' }
+};
+
+class Noodle {
+  constructor(){ this.active = false; }
+  spawn(type, x, y, r, speed, mega){
+    this.active = true; this.type = type; this.x = x; this.y = y;
+    this.r = r; this.baseR = r;
+    this.vy = speed; this.vx = 0;
+    this.rot = rand(0, TAU); this.rs = rand(-2.2, 2.2);
+    this.sway = rand(0, TAU); this.swayAmp = rand(10, 42);
+    this.swaySpeed = rand(1.1, 2.3);
+    this.scale = 0; this.mega = !!mega; this.t = rand(0, 10);
+    this.trail = [];
+  }
+  update(dt, W, H){
+    this.t += dt;
+    this.scale = Math.min(1, this.scale + dt * 6);           // spawn pop
+    this.sway += this.swaySpeed * dt;
+    this.x += Math.sin(this.sway) * this.swayAmp * dt;
+    this.x = clamp(this.x, this.r, W - this.r);
+    this.y += this.vy * dt;
+    this.rot += this.rs * dt;
+    if (this.type === 'rainbow' || this.type === 'golden'){
+      this.trail.push({ x: this.x, y: this.y });
+      if (this.trail.length > 8) this.trail.shift();
+    }
+  }
+  draw(ctx, time){
+    const r = this.r * this.scale;
+    // trail
+    if (this.trail && this.trail.length > 1){
+      for (let i = 0; i < this.trail.length; i++){
+        const p = this.trail[i], a = (i / this.trail.length) * 0.30;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = this.type === 'golden' ? '#ffd35c' : 'hsl(' + ((time*220 + i*30) % 360) + ',95%,65%)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, r * (0.3 + i/this.trail.length * 0.5), 0, TAU); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+
+    let st;
+    if (this.type === 'rainbow'){
+      const h = (time * 200) % 360;
+      st = { dark:'hsl(' + h + ',70%,40%)', light:'hsl(' + ((h+50)%360) + ',95%,70%)',
+             accent:'hsl(' + ((h+150)%360) + ',95%,80%)', glow:'hsl(' + h + ',95%,60%)' };
+    } else st = TYPE_STYLE[this.mega ? 'mega' : this.type];
+
+    ctx.shadowColor = st.glow;
+    ctx.shadowBlur = Perf.glow((this.type === 'normal' ? 10 : 24) * (this.mega ? 1.6 : 1));
+
+    if (this.type === 'rotten'){
+      // Çürük: farklı FORM (dikenli/köşeli) — sadece renkle ayırt edilmesin
+      ctx.beginPath();
+      for (let i = 0; i < 12; i++){
+        const a = (i/12) * TAU, rr = r * (i % 2 ? 0.74 : 1.02);
+        i ? ctx.lineTo(Math.cos(a)*rr, Math.sin(a)*rr) : ctx.moveTo(Math.cos(a)*rr, Math.sin(a)*rr);
+      }
+      ctx.closePath(); ctx.fillStyle = st.dark; ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = st.light; ctx.lineWidth = r*0.18; ctx.lineCap = 'round';
+      for (let i = -1; i <= 1; i++){
+        ctx.beginPath();
+        for (let px = -r; px <= r; px += r*0.25){
+          const py = i*r*0.5 + Math.sin(px*0.11 + i + this.t*3) * r*0.14;
+          px === -r ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+      // uyarı işareti
+      ctx.rotate(-this.rot);
+      ctx.fillStyle = '#1a2b0c'; ctx.strokeStyle = '#eaff9c'; ctx.lineWidth = Math.max(2, r*0.10);
+      ctx.beginPath();
+      ctx.moveTo(0, -r*0.60); ctx.lineTo(r*0.55, r*0.42); ctx.lineTo(-r*0.55, r*0.42); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#eaff9c'; ctx.font = '900 ' + Math.round(r*0.72) + 'px ' + FONT;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', 0, r*0.10);
+    } else {
+      // erişte yumağı
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fillStyle = st.dark; ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = st.light; ctx.lineWidth = r*0.19; ctx.lineCap = 'round';
+      for (let i = -2; i <= 2; i++){
+        ctx.beginPath();
+        let first = true;
+        for (let px = -r; px <= r; px += r*0.22){
+          const py = i*r*0.40 + Math.sin(px*0.10 + i*1.2 + this.t*2.4) * r*0.13;
+          if (first){ ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU);
+      ctx.lineWidth = Math.max(2, r*0.11); ctx.strokeStyle = st.accent; ctx.stroke();
+
+      ctx.rotate(-this.rot);
+      if (this.type === 'spicy'){
+        // alev işareti
+        ctx.fillStyle = '#ffd35c';
+        ctx.beginPath();
+        ctx.moveTo(0, -r*0.72);
+        ctx.quadraticCurveTo(r*0.46, -r*0.10, 0, r*0.55);
+        ctx.quadraticCurveTo(-r*0.46, -r*0.10, 0, -r*0.72);
+        ctx.fill();
+        ctx.fillStyle = '#ff5a2a';
+        ctx.beginPath();
+        ctx.moveTo(0, -r*0.34);
+        ctx.quadraticCurveTo(r*0.24, 0, 0, r*0.40);
+        ctx.quadraticCurveTo(-r*0.24, 0, 0, -r*0.34);
+        ctx.fill();
+      } else if (this.type === 'rainbow' || this.type === 'golden'){
+        // yıldız işareti
+        ctx.fillStyle = this.type === 'golden' ? '#fff6d0' : '#ffffff';
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++){
+          const a = (i/8)*TAU - Math.PI/2, rr = i % 2 ? r*0.22 : r*0.62;
+          i ? ctx.lineTo(Math.cos(a)*rr, Math.sin(a)*rr) : ctx.moveTo(Math.cos(a)*rr, Math.sin(a)*rr);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      if (this.mega){
+        ctx.strokeStyle = '#fff3c4'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, 0, r*1.22, 0, TAU); ctx.stroke();
+        ctx.fillStyle = '#fff3c4'; ctx.font = '900 ' + Math.round(r*0.34) + 'px ' + FONT;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('MEGA', 0, r*1.55);
+      }
+    }
+    ctx.restore();
+    ctx.shadowBlur = 0;
+  }
+}
+
+const NoodleMgr = {
+  pool: [], POOL_SIZE: 64,
+  init(){ this.pool.length = 0; for (let i = 0; i < this.POOL_SIZE; i++) this.pool.push(new Noodle()); },
+  clear(){ for (const n of this.pool) n.active = false; },
+  count(){ let c = 0; for (const n of this.pool) if (n.active) c++; return c; },
+  spawn(type, x, y, r, speed, mega){
+    for (const n of this.pool) if (!n.active){ n.spawn(type, x, y, r, speed, mega); return n; }
+    return null;
+  }
+};
+
+/* ---------------------------------------------------------------- SPAWN MANAGER */
+const SpawnMgr = {
+  timer: 0, lastRotten: -99, lastRainbow: -99, lastGolden: -99, megaLevelDone: 0,
+  reset(){ this.timer = 0.8; this.lastRotten = -99; this.lastRainbow = -99; this.lastGolden = -99; this.megaLevelDone = 0; },
+  pick(elapsed, level){
+    const W = CONFIG.WEIGHTS;
+    const list = [];
+    // erken oyunda öğrenme alanı: ilk 15sn daha çok normal
+    const early = elapsed < 15;
+    list.push(['normal', early ? W.normal + 15 : W.normal]);
+    list.push(['spicy',  early ? W.spicy * 0.6 : W.spicy]);
+    if (elapsed - this.lastRainbow > CONFIG.RAINBOW_COOLDOWN) list.push(['rainbow', W.rainbow]);
+    if (elapsed > CONFIG.SAFE_START && elapsed - this.lastRotten > CONFIG.ROTTEN_COOLDOWN)
+      list.push(['rotten', W.rotten * (elapsed > 45 ? 1.4 : 1)]);
+    if (CONFIG.GOLDEN_ENABLED && elapsed > 12 && elapsed - this.lastGolden > CONFIG.GOLDEN_COOLDOWN)
+      list.push(['golden', W.golden]);
+
+    let total = 0; for (const it of list) total += it[1];
+    let roll = Math.random() * total;
+    for (const it of list){ roll -= it[1]; if (roll <= 0) return it[0]; }
+    return 'normal';
+  },
+  update(dt, game){
+    this.timer -= dt;
+    if (this.timer > 0) return;
+
+    const elapsed = game.duration - game.timeLeft;
+    const d = game.difficulty();
+    let interval = CONFIG.BASE_SPAWN_INTERVAL / d;
+    if (game.rainbowTime > 0) interval /= CONFIG.RAINBOW_SPAWN_BOOST;
+    this.timer = Math.max(CONFIG.MIN_SPAWN_INTERVAL, interval * rand(0.8, 1.25));
+
+    // Mega event: her N levelde bir, level başına tek sefer
+    if (CONFIG.MEGA_ENABLED && game.level % CONFIG.MEGA_EVERY_LEVELS === 0 && this.megaLevelDone !== game.level){
+      this.megaLevelDone = game.level;
+      this.emit(game, 'normal', true);
+      return;
+    }
+
+    let count = 1;
+    if (d > 1.55 && Math.random() < 0.32) count = 2;
+    if (elapsed > 80 && Math.random() < 0.30) count = 2;      // final rush
+    for (let i = 0; i < count; i++) this.emit(game, this.pick(elapsed, game.level), false);
+  },
+  emit(game, type, mega){
+    const S = game.S, W = game.W;
+    const r = (mega ? 46 : 26) * S * (type === 'rotten' ? 1.02 : 1);
+    const x = rand(r + 10, W - r - 10);
+    let speed = CONFIG.BASE_FALL_SPEED * S * game.difficulty() * rand(0.92, 1.12);
+    if (game.rainbowTime > 0) speed *= CONFIG.RAINBOW_SPEED_BOOST;
+    if (mega) speed *= 0.6;
+    if (type === 'rotten') speed *= 0.88;                     // çürük okunabilir kalsın
+    NoodleMgr.spawn(type, x, -r - 12, r, speed, mega);
+    const el = game.duration - game.timeLeft;
+    if (type === 'rotten')  this.lastRotten = el;
+    if (type === 'rainbow') this.lastRainbow = el;
+    if (type === 'golden')  this.lastGolden = el;
+  }
+};
+
+/* ---------------------------------------------------------------- NET (Supabase REST — SDK yok, sadece fetch) */
+const Net = {
+  busy:false,
+  on(){ return !!(CONFIG.SUPABASE.url && CONFIG.SUPABASE.anonKey); },
+  auth(){ return Store.data.auth || {}; },
+  loggedIn(){ return !!(this.auth().token && this.auth().username); },
+  emailOf(u){ return u.toLowerCase() + '@' + CONFIG.SUPABASE.emailDomain; },
+  validUser(u){ return /^[a-z0-9_]{3,16}$/.test((u||'').toLowerCase()); },
+
+  headers(useToken){
+    const h = { 'apikey': CONFIG.SUPABASE.anonKey, 'Content-Type': 'application/json' };
+    h['Authorization'] = 'Bearer ' + ((useToken && this.auth().token) ? this.auth().token : CONFIG.SUPABASE.anonKey);
+    return h;
+  },
+
+  async gotrue(path, body){
+    const r = await fetch(CONFIG.SUPABASE.url + '/auth/v1/' + path, {
+      method:'POST', headers:{ 'apikey':CONFIG.SUPABASE.anonKey, 'Content-Type':'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error_description || j.msg || j.message || ('HTTP ' + r.status));
+    return j;
+  },
+
+  saveSession(j, username){
+    Store.data.auth = {
+      token: j.access_token || null,
+      refresh: j.refresh_token || null,
+      expires: Date.now() + ((j.expires_in || 3600) * 1000) - 60000,
+      username: username || (j.user && j.user.user_metadata && j.user.user_metadata.username) || null,
+      userId: (j.user && j.user.id) || null
+    };
+    Store.save();
+  },
+
+  async login(username, password){
+    const u = (username || '').toLowerCase().trim();
+    if (!this.validUser(u)) throw new Error('Kullanıcı adı 3-16 karakter olmalı (a-z, 0-9, _)');
+    if ((password || '').length < 6) throw new Error('Şifre en az 6 karakter olmalı');
+    const j = await this.gotrue('token?grant_type=password', { email:this.emailOf(u), password });
+    this.saveSession(j, u);
+    this.flush();
+    return u;
+  },
+
+  async signup(username, password){
+    const u = (username || '').toLowerCase().trim();
+    if (!this.validUser(u)) throw new Error('Kullanıcı adı 3-16 karakter olmalı (a-z, 0-9, _)');
+    if ((password || '').length < 6) throw new Error('Şifre en az 6 karakter olmalı');
+    const j = await this.gotrue('signup', { email:this.emailOf(u), password, data:{ username:u } });
+    if (j.access_token){ this.saveSession(j, u); this.flush(); return u; }
+    return await this.login(u, password);      // e-posta onayı kapalıysa buraya düşmez
+  },
+
+  logout(){
+    Store.data.auth = { token:null, refresh:null, expires:0, username:null, userId:null };
+    Store.save();
+  },
+
+  async ensure(){
+    const a = this.auth();
+    if (!a.token) return false;
+    if (Date.now() < a.expires) return true;
+    if (!a.refresh) return false;
+    try{
+      const j = await this.gotrue('token?grant_type=refresh_token', { refresh_token: a.refresh });
+      this.saveSession(j, a.username);
+      return true;
+    }catch(e){ this.logout(); return false; }
+  },
+
+  // Skoru gönder; başarısızsa kuyruğa al (offline oynanabilirlik bozulmasın)
+  async submit(entry){
+    if (!this.on() || !this.loggedIn()){ return { ok:false, reason:'offline' }; }
+    const ok = await this.ensure();
+    if (!ok) return { ok:false, reason:'auth' };
+    try{
+      const r = await fetch(CONFIG.SUPABASE.url + '/rest/v1/scores', {
+        method:'POST', headers: Object.assign(this.headers(true), { 'Prefer':'return=minimal' }),
+        body: JSON.stringify(entry)
+      });
+      if (!r.ok){ throw new Error('HTTP ' + r.status); }
+      return { ok:true };
+    }catch(e){
+      const q = Store.data.pending || (Store.data.pending = []);
+      if (q.length < 40) q.push(entry);
+      Store.save();
+      return { ok:false, reason:'queued' };
+    }
+  },
+
+  async flush(){
+    const q = Store.data.pending || [];
+    if (!q.length || !this.on() || !this.loggedIn()) return;
+    if (!(await this.ensure())) return;
+    const rest = [];
+    for (const e of q){
+      try{
+        const r = await fetch(CONFIG.SUPABASE.url + '/rest/v1/scores', {
+          method:'POST', headers: Object.assign(this.headers(true), { 'Prefer':'return=minimal' }),
+          body: JSON.stringify(e)
+        });
+        if (!r.ok) rest.push(e);
+      }catch(err){ rest.push(e); }
+    }
+    Store.data.pending = rest; Store.save();
+  },
+
+  async board(trackId){
+    if (!this.on()) throw new Error('Sunucu ayarlanmamış');
+    await this.ensure();
+    const view = trackId === 'global' ? 'leaderboard_global' : 'leaderboard';
+    let q = '?select=username,score,max_combo,level' + (trackId === 'global' ? '' : ',track_id') +
+            '&order=score.desc&limit=50';
+    if (trackId !== 'global') q += '&track_id=eq.' + encodeURIComponent(trackId);
+    const r = await fetch(CONFIG.SUPABASE.url + '/rest/v1/' + view + q, { headers:this.headers(true) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  }
+};
+
+/* ---------------------------------------------------------------- PERFORMANS (mobil/düşük FX) */
+const Perf = {
+  low:false, isTouch:false, badFrames:0,
+  init(){
+    this.isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  },
+  // Ayar + cihaz + ölçülen FPS'e göre düşük efekt modu
+  update(game){
+    const mode = Store.data.settings.perf || 'auto';
+    let low;
+    if (mode === 'on') low = true;
+    else if (mode === 'off') low = false;
+    else low = this.isTouch || (window.innerWidth * window.innerHeight < 420000) || this.badFrames > 90;
+    if (low !== this.low){
+      this.low = low;
+      if (game) game.resize();
+    }
+  },
+  watch(fps, game){
+    if ((Store.data.settings.perf || 'auto') !== 'auto' || this.low) return;
+    if (fps < 45) this.badFrames++; else this.badFrames = Math.max(0, this.badFrames - 2);
+    if (this.badFrames > 90) this.update(game);
+  },
+  dpr(){ return this.low ? 1.25 : 2; },
+  particles(){ return this.low ? 110 : CONFIG.MAX_PARTICLES; },
+  rain(){ return this.low ? 55 : 150; },
+  glow(base){ return this.low ? Math.min(base, 8) : base; }
+};
+function vibrate(ms){
+  if (!Store.data.settings.haptics) return;
+  if (navigator.vibrate) { try { navigator.vibrate(ms); } catch(e){} }
+}
+
+/* ---------------------------------------------------------------- PROCEDURAL MUSIC
+   Her parça kodla üretilir: MP3 yok, telif yok, BPM tam senkron.
+   Melodi seed'li PRNG ile deterministik — aynı parça her oynayışta aynı çalar. */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const midi = n => 440 * Math.pow(2, (n - 69) / 12);
+// Adım + seed'e bağlı deterministik 0..1 — aynı parça her oynayışta birebir aynı çalar
+function hash01(a, b){
+  let h = (a * 374761393 + b * 668265263) | 0;
+  h = (h ^ (h >>> 13)) * 1274126177 | 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+// Stil tablosu: her parçaya farklı karakter
+const STYLES = {
+  citypop:  { bassWave:'triangle', leadWave:'triangle', chordWave:'sine',     hat:8,  swing:0,    drive:0.85, pluck:0.9 },
+  kawaii:   { bassWave:'square',   leadWave:'square',   chordWave:'triangle', hat:16, swing:0,    drive:0.95, pluck:0.7 },
+  shuffle:  { bassWave:'triangle', leadWave:'square',   chordWave:'triangle', hat:8,  swing:0.22, drive:0.9,  pluck:0.8 },
+  disco:    { bassWave:'sawtooth', leadWave:'sawtooth', chordWave:'sawtooth', hat:16, swing:0,    drive:0.8,  pluck:0.6 },
+  rock:     { bassWave:'sawtooth', leadWave:'sawtooth', chordWave:'sawtooth', hat:8,  swing:0,    drive:1.05, pluck:0.5 },
+  hardcore: { bassWave:'square',   leadWave:'square',   chordWave:'sawtooth', hat:16, swing:0,    drive:1.0,  pluck:0.65 },
+  lofi:     { bassWave:'sine',     leadWave:'triangle', chordWave:'sine',     hat:8,  swing:0.18, drive:0.7,  pluck:1.0 },
+  taiko:    { bassWave:'triangle', leadWave:'square',   chordWave:'triangle', hat:4,  swing:0,    drive:1.1,  pluck:0.85 },
+  funk:     { bassWave:'sawtooth', leadWave:'triangle', chordWave:'triangle', hat:16, swing:0.14, drive:0.85, pluck:0.75 },
+  dnb:      { bassWave:'sawtooth', leadWave:'square',   chordWave:'sawtooth', hat:16, swing:0,    drive:1.0,  pluck:0.6 }
+};
+
+// Şarkı bölümleri (ilerleme yüzdesine göre) — oyunun difficulty eğrisiyle aynı hikâye
+const SONG_SECTIONS = [
+  { to:0.14, name:'intro',  kick:0,   snare:0, hats:0,   bass:0.5, chords:0.6, lead:0.5, arp:0 },
+  { to:0.32, name:'verse',  kick:1,   snare:1, hats:0.6, bass:1,   chords:0.8, lead:0.7, arp:0 },
+  { to:0.52, name:'drop',   kick:1,   snare:1, hats:1,   bass:1,   chords:1,   lead:0.9, arp:0.5 },
+  { to:0.64, name:'break',  kick:0,   snare:0, hats:0.4, bass:0.6, chords:1,   lead:1,   arp:0 },
+  { to:0.86, name:'drop2',  kick:1,   snare:1, hats:1,   bass:1,   chords:1,   lead:0.9, arp:0.8 },
+  { to:1.01, name:'final',  kick:1.4, snare:1, hats:1,   bass:1,   chords:1,   lead:1,   arp:1 }
+];
+
+const Proc = {
+  track:null, st:null, playing:false, startAt:0, pausedAt:0, step:0, nextTime:0,
+  stepDur:0, melody:null, prog:null, out:null, duration:90,
+
+  build(track){
+    const rng = mulberry32(track.seed);
+    this.st = STYLES[track.style] || STYLES.citypop;
+    this.stepDur = (60 / track.bpm) / 4;                       // 16'lık grid
+    const steps = Math.ceil(this.duration / this.stepDur) + 8;
+    // Akor ilerlemesi (minör/majör pentatonik dünyasında kalan 4 akor)
+    const minorProgs = [[0,-3,-5,-7],[0,-5,-3,-7],[0,3,-2,-5],[0,-7,-3,-5]];
+    const majorProgs = [[0,-3,-5,2],[0,4,-3,-5],[0,5,3,-2],[0,-5,4,2]];
+    const pool = track.mode === 'major' ? majorProgs : minorProgs;
+    this.prog = pool[Math.floor(rng() * pool.length)];
+    // Pentatonik melodi (Japon hissi: minör pentatonik / yo scale)
+    const scale = track.mode === 'major' ? [0,2,4,7,9,12,14] : [0,3,5,7,10,12,15];
+    this.melody = new Int16Array(steps);
+    let last = 0;
+    for (let i = 0; i < steps; i++){
+      if (i % 2 === 0){
+        const jump = Math.floor(rng() * 3) - 1;
+        last = clamp(last + jump, 0, scale.length - 1);
+        // her 8 adımda bir motif tekrarı (akılda kalıcılık)
+        this.melody[i] = scale[(i % 32 < 16) ? last : (last + 1) % scale.length];
+      } else this.melody[i] = -99;                             // sessiz adım
+    }
+    this.step = 0;
+  },
+
+  sectionAt(p){ for (const s of SONG_SECTIONS) if (p <= s.to) return s; return SONG_SECTIONS[SONG_SECTIONS.length-1]; },
+
+  start(track, duration){
+    Sound.init();
+    if (!Sound.ctx) return false;
+    this.track = track; this.duration = duration || CONFIG.GAME_DURATION;
+    this.build(track);
+    if (!this.out){
+      this.out = Sound.ctx.createGain();
+      this.out.connect(Sound.master);
+    }
+    Sound.applyVolumes();
+    this.startAt = Sound.ctx.currentTime + 0.06;
+    this.nextTime = this.startAt;
+    this.pausedAt = 0; this.playing = true;
+    return true;
+  },
+  time(){ return this.playing ? Math.max(0, Sound.ctx.currentTime - this.startAt) : this.pausedAt; },
+  pause(){ if (!this.playing) return; this.pausedAt = this.time(); this.playing = false; },
+  resume(){
+    if (this.playing || !Sound.ctx) return;
+    this.startAt = Sound.ctx.currentTime - this.pausedAt;
+    this.step = Math.ceil(this.pausedAt / this.stepDur);
+    this.nextTime = Sound.ctx.currentTime + 0.04;
+    this.playing = true;
+  },
+  stop(){ this.playing = false; this.pausedAt = 0; this.step = 0; },
+
+  /* --- enstrümanlar --- */
+  env(t, dur, peak, wave, f0, f1, dest){
+    const c = Sound.ctx;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = wave; o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(dest || this.out); o.start(t); o.stop(t + dur + 0.03);
+  },
+  noiseAt(t, dur, peak, hp, type){
+    const c = Sound.ctx, len = Math.max(1, Math.floor(c.sampleRate * dur));
+    const b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2);
+    const src = c.createBufferSource(); src.buffer = b;
+    const f = c.createBiquadFilter(); f.type = type || 'highpass'; f.frequency.value = hp;
+    const g = c.createGain(); g.gain.value = peak;
+    src.connect(f); f.connect(g); g.connect(this.out); src.start(t);
+  },
+  kick(t, hard){ this.env(t, 0.20, 0.55 * (hard?1.15:1), 'sine', 165, 42); this.noiseAt(t, 0.03, 0.10, 900); },
+  snare(t){ this.noiseAt(t, 0.13, 0.20, 1500); this.env(t, 0.09, 0.10, 'triangle', 220, 150); },
+  hat(t, open){ this.noiseAt(t, open ? 0.10 : 0.035, open ? 0.055 : 0.045, 7000); },
+
+  /* --- adım zamanlayıcı (lookahead) --- */
+  tick(){
+    if (!this.playing || !Sound.ctx) return;
+    if (!Store.data.settings.music || !Store.data.settings.sound){ return; }
+    const c = Sound.ctx, st = this.st, tr = this.track;
+    while (this.nextTime < c.currentTime + 0.22){
+      const i = this.step, t = this.nextTime;
+      const songT = t - this.startAt;
+      if (songT > this.duration){ this.pausedAt = this.duration; this.playing = false; break; }
+      const sec = this.sectionAt(songT / this.duration);
+      const bar16 = i % 16;
+      const chord = this.prog[Math.floor(i / 32) % 4];
+      const rootNote = tr.root + chord;
+      const swingOff = (st.swing && i % 2 === 1) ? this.stepDur * st.swing : 0;
+      const tt = t + swingOff;
+
+      // DAVUL
+      if (sec.kick){
+        const dnb = tr.style === 'dnb';
+        const kickHit = dnb ? (bar16 === 0 || bar16 === 10)
+                            : (bar16 === 0 || bar16 === 8 || (sec.kick > 1 && (bar16 === 6 || bar16 === 14)));
+        if (kickHit) this.kick(tt, sec.kick > 1);
+      }
+      if (sec.snare && (bar16 === 4 || bar16 === 12)) this.snare(tt);
+      if (sec.hats){
+        const every = 16 / st.hat;
+        if (i % every === 0 && hash01(i, tr.seed) < sec.hats) this.hat(tt, bar16 === 14);
+      }
+      if (tr.style === 'taiko' && sec.kick && (bar16 === 2 || bar16 === 11)) this.kick(tt, true);
+
+      // BAS
+      if (sec.bass && i % 4 === 0){
+        const oct = (i % 8 === 0) ? 0 : 12;
+        this.env(tt, this.stepDur * 3.2, 0.26 * sec.bass * st.drive, st.bassWave,
+                 midi(rootNote - 24 + oct), midi(rootNote - 24 + oct));
+      }
+      // AKOR
+      if (sec.chords && i % 8 === 0){
+        const notes = tr.mode === 'major' ? [0,4,7] : [0,3,7];
+        for (const n of notes)
+          this.env(tt, this.stepDur * 5, 0.055 * sec.chords, st.chordWave, midi(rootNote + n), 0);
+      }
+      // KOTO / LEAD melodi
+      if (sec.lead && this.melody[i] !== undefined && this.melody[i] !== -99 && hash01(i, tr.seed + 7) < sec.lead){
+        const n = rootNote + 12 + this.melody[i];
+        this.env(tt, this.stepDur * 2.4 * st.pluck, 0.13, st.leadWave, midi(n), 0);
+        this.env(tt, this.stepDur * 1.1 * st.pluck, 0.045, 'sine', midi(n + 12), 0);
+      }
+      // ARP (drop/final enerjisi)
+      if (sec.arp && hash01(i, tr.seed + 13) < sec.arp){
+        const arpN = [0,7,12,15,19][i % 5];
+        this.env(tt, this.stepDur * 0.9, 0.06, st.leadWave, midi(rootNote + 12 + arpN), 0);
+      }
+      // Bölüm geçişi vurgusu
+      if (bar16 === 0 && i % 64 === 0 && i > 0) this.noiseAt(t, 0.35, 0.06, 2500, 'bandpass');
+
+      this.nextTime += this.stepDur;
+      this.step++;
+    }
+  }
+};
+
+/* ---------------------------------------------------------------- MUSIC (facade: mp3 varsa mp3, yoksa prosedürel) */
+const Music = {
+  el:null, track:null, ready:false, urls:{},
+  init(){
+    if (this.el) return;
+    this.el = new Audio();
+    this.el.preload = 'auto';
+    this.el.volume = clamp(Store.data.settings.musicVol, 0, 1);
+  },
+  // Track için kaynak URL'i: kullanıcının yüklediği dosya > audio/ klasörü
+  srcFor(tr){ return this.urls[tr.id] || tr.file; },
+  probe(tr, cb){
+    // Dosya var mı / süresi kaç sn — song select için
+    const src = this.srcFor(tr);
+    if (!src){ cb(null); return; }
+    const a = new Audio();
+    a.preload = 'metadata';
+    a.addEventListener('loadedmetadata', () => cb(isFinite(a.duration) ? a.duration : null), { once:true });
+    a.addEventListener('error', () => cb(null), { once:true });
+    a.src = src;
+  },
+  load(tr, cb){
+    this.init();
+    this.track = tr; this.ready = false; this.mode = 'none';
+    if (!tr || !tr.bpm){ cb(false, CONFIG.GAME_DURATION); return; }
+    const src = this.srcFor(tr);
+    const useProc = () => {
+      this.mode = 'proc'; this.ready = true;
+      cb(true, CONFIG.GAME_DURATION);
+    };
+    if (!src){ useProc(); return; }
+    const onMeta = () => {
+      this.mode = 'file'; this.ready = true;
+      cb(true, isFinite(this.el.duration) && this.el.duration > 5 ? this.el.duration : CONFIG.GAME_DURATION);
+    };
+    const onErr = () => useProc();          // mp3 yoksa oyunun kendi müziği devreye girer
+    this.el.addEventListener('loadedmetadata', onMeta, { once:true });
+    this.el.addEventListener('error', onErr, { once:true });
+    this.el.src = src;
+    this.el.load();
+  },
+  play(){
+    if (!this.ready) return;
+    if (this.mode === 'file'){ this.el.currentTime = 0; const pr = this.el.play(); if (pr && pr.catch) pr.catch(()=>{}); }
+    else Proc.start(this.track, CONFIG.GAME_DURATION);
+  },
+  pause(){ if (this.mode === 'file') this.el.pause(); else Proc.pause(); },
+  resume(){ if (this.mode === 'file'){ const pr = this.el.play(); if (pr && pr.catch) pr.catch(()=>{}); } else Proc.resume(); },
+  stop(){ if (this.mode === 'file'){ this.el.pause(); this.el.currentTime = 0; } else Proc.stop(); },
+  time(){ return this.mode === 'file' ? this.el.currentTime : Proc.time(); },
+  isPlaying(){ return this.mode === 'file' ? (this.ready && !this.el.paused) : Proc.playing; },
+  tick(){ if (this.mode === 'proc') Proc.tick(); },
+  setFile(trId, file){
+    if (this.urls[trId]) URL.revokeObjectURL(this.urls[trId]);
+    this.urls[trId] = URL.createObjectURL(file);
+  }
+};
+
+/* ---------------------------------------------------------------- RHYTHM (beat-senkron spawn) */
+const Rhythm = {
+  active:false, track:null, step:0, idx:0, lastX:null, lastHit:-99, beatLen:0.5, lastBeatIdx:-1,
+  start(track){
+    this.track = track;
+    this.active = !!(track && track.bpm > 0 && Music.ready);
+    this.beatLen = track && track.bpm ? 60 / track.bpm : 0.5;
+    this.step = this.beatLen / CONFIG.RHYTHM.SUBDIV;
+    this.idx = 0; this.lastX = null; this.lastHit = -99; this.lastBeatIdx = -1;
+  },
+  stop(){ this.active = false; },
+  sectionAt(p){
+    const S = CONFIG.RHYTHM.SECTIONS;
+    for (const sec of S) if (p <= sec.to) return sec;
+    return S[S.length - 1];
+  },
+  update(game, songTime){
+    if (!this.active) return;
+    const dur = game.duration, off = (Store.data.settings.audioOffset || 0) / 1000;
+    for (let guard = 0; guard < 48; guard++){
+      const i = this.idx;
+      const tHit = off + i * this.step;
+      if (tHit > dur - 0.5){ this.active = false; break; }
+      const sec = this.sectionAt(tHit / dur);
+      if (tHit - sec.fall > songTime) break;            // spawn zamanı henüz gelmedi
+      this.idx++;
+      if (tHit - sec.fall < songTime - CONFIG.RHYTHM.LATE_SKIP) continue;  // geç kalmış slot
+      if (sec.pattern[i % sec.pattern.length] !== '1') continue;
+      this.emit(game, tHit, sec, songTime);
+    }
+  },
+  emit(game, tHit, sec, songTime){
+    const elapsed = tHit;
+    const type = SpawnMgr.pick(elapsed, game.level);
+    const mega = (CONFIG.MEGA_ENABLED && game.level % CONFIG.MEGA_EVERY_LEVELS === 0 && SpawnMgr.megaLevelDone !== game.level);
+    if (mega) SpawnMgr.megaLevelDone = game.level;
+
+    const S = game.S, W = game.W;
+    const r = (mega ? 46 : 26) * S;
+    // Adalet: iki vuruş arasında kasenin gerçekten kat edebileceği mesafeyi aşma
+    const gap = Math.max(0.12, tHit - this.lastHit);
+    const maxDx = gap * CONFIG.BOWL_SPEED * S * 0.85;
+    const lo = clamp((this.lastX === null ? W/2 : this.lastX) - maxDx, r + 12, W - r - 12);
+    const hi = clamp((this.lastX === null ? W/2 : this.lastX) + maxDx, r + 12, W - r - 12);
+    const x = rand(lo, hi);
+
+    const spawnY = -r - 12;
+    const dist = game.player.y - spawnY;
+    // Hız, kalan gerçek süreye göre hesaplanır: noodle tam tHit anında kase hattına iner
+    const fall = Math.max(0.25, tHit - songTime);
+    const speed = dist / fall;
+
+    const n = NoodleMgr.spawn(mega ? 'normal' : type, x, spawnY, r, speed, mega);
+    if (n){ n.swayAmp = 0; n.rs *= 0.6; }   // ritim modunda yatay sapma yok (hedef beat korunsun)
+    this.lastX = x; this.lastHit = tHit;
+    const el = tHit;
+    if (type === 'rotten')  SpawnMgr.lastRotten = el;
+    if (type === 'rainbow') SpawnMgr.lastRainbow = el;
+    if (type === 'golden')  SpawnMgr.lastGolden = el;
+  },
+  // Görsel nabız: yeni vuruşa geçildiyse 1 döner
+  beatTick(songTime){
+    if (!this.track || !this.track.bpm) return false;
+    const off = (Store.data.settings.audioOffset || 0) / 1000;
+    const b = Math.floor((songTime - off) / this.beatLen);
+    if (b !== this.lastBeatIdx){ this.lastBeatIdx = b; return true; }
+    return false;
+  }
+};
+
+/* ---------------------------------------------------------------- COMBO / LEVEL / SCORE */
+const ComboMgr = {
+  combo: 0, max: 0,
+  reset(){ this.combo = 0; this.max = 0; },
+  add(){ this.combo++; if (this.combo > this.max) this.max = this.combo; return this.combo; },
+  break_(){ this.combo = 0; },
+  multiplier(){
+    for (const [th, m] of CONFIG.COMBO_TIERS) if (this.combo >= th) return m;
+    return 1;
+  }
+};
+
+const ScoreMgr = {
+  score: 0, xp: 0,
+  reset(){ this.score = 0; this.xp = 0; },
+  compute(type, level, rainbowActive, mega){
+    const base = CONFIG.NORMAL_BASE_SCORE * level;
+    if (type === 'golden') return CONFIG.GOLDEN_BASE + level * CONFIG.GOLDEN_PER_LEVEL;
+    if (mega) return CONFIG.MEGA_BONUS + base;
+    const noodleMult = (type === 'spicy') ? CONFIG.SPICY_MULTIPLIER : 1;
+    const comboMult = ComboMgr.multiplier();
+    const rbMult = rainbowActive ? CONFIG.RAINBOW_MULTIPLIER : 1;
+    const total = Math.min(CONFIG.MAX_MULTIPLIER, noodleMult * comboMult * rbMult);
+    return Math.round(base * total);
+  },
+  add(v){ this.score += v; this.xp += v; },
+  resetCurrent(){ this.score = 0; }   // sadece maç skoru (kalıcı veriler korunur)
+};
+
+const LevelMgr = {
+  level: 1,
+  reset(){ this.level = CONFIG.STARTING_LEVEL; },
+  check(xp){
+    let lv = 1;
+    const th = CONFIG.LEVEL_THRESHOLDS;
+    for (let i = 0; i < th.length; i++) if (xp >= th[i]) lv = i + 1;
+    if (lv > this.level){ this.level = lv; return true; }
+    return false;
+  }
+};
+
+/* ---------------------------------------------------------------- GAME */
+const STATE = { MENU:'MENU', TUTORIAL:'TUTORIAL', COUNTDOWN:'COUNTDOWN', PLAYING:'PLAYING',
+                PAUSED:'PAUSED', RESULTS:'RESULTS', SHOP:'SHOP', SETTINGS:'SETTINGS', SCORES:'SCORES' };
+
+const Game = {
+  canvas:null, ctx:null, W:0, H:0, S:1, dpr:1,
+  state: STATE.MENU, last: 0, acc: 0, fps: 60, fpsT: 0, frames: 0,
+  time: 0, timeLeft: CONFIG.GAME_DURATION, duration: CONFIG.GAME_DURATION, rainbowTime: 0,
+  track: null, rhythmMode: false, beatPulse: 0,
+  lives: CONFIG.STARTING_LIVES, level: 1,
+  shake: 0, shakeMag: 0, flash: 0, flashColor: '#fff',
+  stats: null, cdIndex: 0, cdTimer: 0, lastBeep: -1, endingTimer: 0,
+  player: new Player(),
+  hudCache: {},
+
+  init(){
+    Store.load();
+    Perf.init(); Perf.update(null);
+    this.canvas = $('game'); this.ctx = this.canvas.getContext('2d', { alpha:false });
+    Particles.init(); NoodleMgr.init();
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.bindInput();
+    UI.init(this);
+    this.applySettingsToBody();
+    this.resetStats();
+    this.state = STATE.MENU;
+    this.last = performance.now();
+    requestAnimationFrame(t => this.loop(t));
+  },
+
+  applySettingsToBody(){
+    document.body.classList.toggle('reduced', !!Store.data.settings.reducedMotion);
+  },
+
+  resize(){
+    const W = window.innerWidth, H = window.innerHeight;
+    this.dpr = Math.min(window.devicePixelRatio || 1, Perf.dpr());
+    this.canvas.width = Math.floor(W * this.dpr);
+    this.canvas.height = Math.floor(H * this.dpr);
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.W = W; this.H = H;
+    // Portre/yatay fark etmeksizin oynanabilir ölçek (dar ekranda bowl oransal olarak büyür)
+    this.portrait = H > W;
+    this.S = clamp(Math.min(H / 900, W / 820) * 1.12, 0.55, 1.35);
+    document.body.classList.toggle('portrait', this.portrait);
+    BG.build(W, H, skinOf('background', Store.data.selected.background));
+    this.player.layout(W, H, this.S);
+  },
+
+  bindInput(){
+    const move = px => { this.player.setTarget(px, this.W); };
+    const el = document.getElementById('app');
+    el.addEventListener('pointermove', e => move(e.clientX), { passive:true });
+    el.addEventListener('pointerdown', e => { Sound.unlock(); move(e.clientX); }, { passive:true });
+    el.addEventListener('touchmove', e => { if (e.touches[0]) move(e.touches[0].clientX); }, { passive:true });
+    el.addEventListener('touchstart', e => { Sound.unlock(); if (e.touches[0]) move(e.touches[0].clientX); }, { passive:true });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === STATE.PLAYING) this.pause(); });
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Escape'){
+        if (this.state === STATE.PLAYING) this.pause();
+        else if (this.state === STATE.PAUSED) this.resume();
+      }
+      if (e.key === 'F3' || e.key === 'F2'){ e.preventDefault(); CONFIG.DEBUG = !CONFIG.DEBUG; $('debug').style.display = CONFIG.DEBUG ? 'block' : 'none'; }
+      if (CONFIG.DEBUG && this.state === STATE.PLAYING){
+        if (e.key === '1') SpawnMgr.emit(this, 'normal', false);
+        if (e.key === '2') SpawnMgr.emit(this, 'spicy', false);
+        if (e.key === '3') SpawnMgr.emit(this, 'rainbow', false);
+        if (e.key === '4') SpawnMgr.emit(this, 'rotten', false);
+        if (e.key === '5') SpawnMgr.emit(this, 'golden', false);
+        if (e.key === '6') SpawnMgr.emit(this, 'normal', true);
+        if (e.key === '0'){ ScoreMgr.add(2000); this.checkLevel(); }
+      }
+    });
+    window.addEventListener('blur', () => { if (this.state === STATE.PLAYING) this.pause(); });
+  },
+
+  resetStats(){
+    this.stats = { caught:0, spicy:0, rainbow:0, rotten:0, golden:0, mega:0, timeSurvived:0 };
+  },
+
+  /* ---- akış ---- */
+  startGame(track){
+    Sound.unlock();
+    if (track !== undefined) this.track = track;
+    if (!this.track) this.track = CONFIG.TRACKS[CONFIG.TRACKS.length - 1];   // classic
+    Music.load(this.track, (ok, dur) => {
+      this.duration = this.track.bpm ? Math.min(dur, 300) : CONFIG.GAME_DURATION;
+      this.rhythmMode = !!(ok && this.track.bpm > 0);
+      this.timeLeft = this.duration;
+      Rhythm.start(this.track);
+    });
+    ScoreMgr.reset(); ComboMgr.reset(); LevelMgr.reset(); SpawnMgr.reset();
+    NoodleMgr.clear(); Particles.clear(); Floats.clear();
+    this.resetStats();
+    this.lives = CONFIG.STARTING_LIVES;
+    this.level = CONFIG.STARTING_LEVEL;
+    this.timeLeft = this.duration;
+    this.rainbowTime = 0; this.beatPulse = 0; this.shake = 0; this.flash = 0; this.endingTimer = 0;
+    this.player.reset(); this.player.layout(this.W, this.H, this.S);
+    this.player.x = this.player.targetX = this.W / 2;
+    this.cdIndex = 3; this.cdTimer = 0.85; this.lastBeep = -1;
+    UI.resetCache();
+    UI.showScreen(null); UI.hud(true); UI.syncAll(this);
+    $('countdown').style.display = 'flex';
+    UI.setCountdown('3');
+    Sound.play('countdown', false);
+    this.state = STATE.COUNTDOWN;
+  },
+
+  beginPlay(){
+    $('countdown').style.display = 'none';
+    this.state = STATE.PLAYING;
+    if (this.rhythmMode){ Music.play(); Rhythm.start(this.track); }
+    else Sound.startMusic();          // müzik dosyası yoksa prosedürel müzik
+  },
+
+  pause(){
+    if (this.state !== STATE.PLAYING) return;
+    this.state = STATE.PAUSED;
+    Sound.stopMusic(); Music.pause();
+    UI.showScreen('scPause');
+  },
+  resume(){
+    if (this.state !== STATE.PAUSED) return;
+    UI.showScreen(null);
+    this.state = STATE.PLAYING;
+    if (this.rhythmMode) Music.resume(); else Sound.startMusic();
+  },
+  quitToMenu(){
+    this.state = STATE.MENU;
+    Sound.stopMusic(); Music.stop(); Rhythm.stop();
+    NoodleMgr.clear(); Particles.clear(); Floats.clear();
+    UI.hud(false); UI.showScreen('scMenu');
+  },
+
+  endGame(reason){
+    if (this.state === STATE.RESULTS) return;
+    Sound.stopMusic(); Music.stop(); Rhythm.stop();
+    this.stats.timeSurvived = Math.round(this.duration - Math.max(0, this.timeLeft));
+    const d = Store.data;
+    const isRecord = ScoreMgr.score > d.bestScore;
+    if (isRecord) d.bestScore = Math.floor(ScoreMgr.score);
+    if (ComboMgr.max > d.bestCombo) d.bestCombo = ComboMgr.max;
+    if (this.level > d.highestLevel) d.highestLevel = this.level;
+    const coins = Math.floor(ScoreMgr.score / CONFIG.COIN_DIVISOR);
+    d.totalCoins += coins;                     // kalıcı coin — asla sıfırlanmaz
+    Store.save();
+    Sound.play(isRecord ? 'record' : 'over');
+    this.state = STATE.RESULTS;
+    UI.hud(false);
+    UI.showResults(this, reason, isRecord, coins);
+  },
+
+  /* ---- zorluk ---- */
+  difficulty(){
+    const elapsed = this.duration - this.timeLeft;
+    const timeF = 0.85 + (elapsed / this.duration) * 0.62;   // 0.85 -> 1.47
+    const levelF = 1 + (this.level - 1) * 0.045;
+    const rush = elapsed > 80 ? 1.12 : 1;
+    return timeF * levelF * rush;
+  },
+
+  checkLevel(){
+    if (LevelMgr.check(ScoreMgr.xp)){
+      this.level = LevelMgr.level;
+      Sound.play('level'); vibrate(25);
+      UI.toast('LEVEL UP', '#3ce7ff');
+      Particles.burst(this.player.x, this.player.y - 40, 'level', 26);
+      UI.syncAll(this);
+    }
+  },
+
+  addShake(mag){
+    if (!Store.data.settings.shake) return;
+    const m = Store.data.settings.reducedMotion ? mag * 0.3 : mag;
+    this.shake = 0.32; this.shakeMag = m;
+  },
+
+  onCatch(n){
+    const rb = this.rainbowTime > 0;
+    const x = n.x, y = n.y;
+    n.active = false;
+    this.player.hit();
+
+    if (n.type === 'rotten'){
+      ComboMgr.break_();
+      if (CONFIG.ROTTEN_SCORE_RESET) ScoreMgr.resetCurrent();
+      this.lives -= CONFIG.ROTTEN_LIFE_LOSS;
+      this.stats.rotten++;
+      Particles.burst(x, y, 'rotten', 22);
+      Floats.add(x, y - 20, 'SCORE RESET', '#7fd94a', 24);
+      UI.toast('ROTTEN NOODLE', '#7fd94a');
+      UI.shakeHeart();
+      Sound.play('rotten'); vibrate(90);
+      this.addShake(16);
+      this.flash = 0.25; this.flashColor = 'rgba(120,200,60,.35)';
+      UI.syncAll(this);
+      if (this.lives <= 0){ this.endingTimer = 0.7; }
+      return;
+    }
+
+    const combo = ComboMgr.add();
+    const gained = ScoreMgr.compute(n.type, this.level, rb, n.mega);
+    ScoreMgr.add(gained);
+    this.stats.caught++;
+
+    if (n.mega){
+      this.stats.mega++;
+      Particles.burst(x, y, 'mega', 40);
+      Floats.add(x, y - 26, 'MEGA +' + fmt(gained), '#ffd35c', 30);
+      UI.toast('MEGA NOODLE', '#ffae42');
+      Sound.play('mega'); this.addShake(8);
+    } else if (n.type === 'spicy'){
+      this.stats.spicy++;
+      Particles.burst(x, y, 'spicy', 18);
+      Floats.add(x, y - 20, 'SPICY +' + fmt(gained), '#ff8a3c', 24);
+      Sound.play('spicy');
+    } else if (n.type === 'golden'){
+      this.stats.golden++;
+      Particles.burst(x, y, 'golden', 34);
+      Floats.add(x, y - 24, 'GOLDEN +' + fmt(gained), '#ffd35c', 28);
+      UI.toast('GOLDEN NOODLE', '#ffd35c');
+      Sound.play('golden');
+    } else if (n.type === 'rainbow'){
+      this.stats.rainbow++;
+      this.rainbowTime = CONFIG.RAINBOW_DURATION;
+      Particles.burst(x, y, 'rainbow', 42);
+      Floats.add(x, y - 24, '+' + fmt(gained), '#ffffff', 26);
+      UI.toast('RAINBOW MODE', '#3ce7ff');
+      Sound.play('rainbow'); vibrate(35);
+      this.addShake(6);
+    } else {
+      Particles.burst(x, y, 'normal', 12);
+      Floats.add(x, y - 18, '+' + fmt(gained), '#ffe08a', 22);
+      Sound.play('catch', combo);
+    }
+    if (combo > 1 && combo % 10 === 0) UI.toast('COMBO x' + combo, '#ff8fc0');
+    this.checkLevel();
+    UI.syncAll(this);
+  },
+
+  onMiss(n){
+    // Ceza sadece normal/spicy kaçırıldığında (combo reset), can gitmez
+    if (n.type === 'normal' || n.type === 'spicy'){
+      if (ComboMgr.combo >= 3) Sound.play('miss');
+      ComboMgr.break_();
+      UI.syncAll(this);
+    }
+    n.active = false;
+  },
+
+  /* ---- döngü ---- */
+  loop(now){
+    let dt = (now - this.last) / 1000;
+    this.last = now;
+    if (dt > 0.05) dt = 0.05;                  // sekme değişimi vs. koruması
+    this.frames++; this.fpsT += dt;
+    if (this.fpsT >= 0.5){ this.fps = this.frames / this.fpsT; this.frames = 0; this.fpsT = 0; Perf.watch(this.fps, this); }
+
+    this.update(dt);
+    this.render(dt);
+    requestAnimationFrame(t => this.loop(t));
+  },
+
+  update(dt){
+    this.time += dt;
+    BG.update(dt, this.W, this.H);
+
+    if (this.state === STATE.COUNTDOWN){
+      this.player.update(dt, this.W);
+      this.cdTimer -= dt;
+      if (this.cdTimer <= 0){
+        this.cdIndex--;
+        if (this.cdIndex > 0){ UI.setCountdown(String(this.cdIndex)); Sound.play('countdown', false); this.cdTimer = 0.85; }
+        else if (this.cdIndex === 0){ UI.setCountdown('GO'); Sound.play('countdown', true); this.cdTimer = 0.55; }
+        else this.beginPlay();
+      }
+      Particles.update(dt);
+      return;
+    }
+
+    if (this.state !== STATE.PLAYING){
+      // MENU/SETTINGS/SHOP: sadece arka plan animasyonu döner
+      if (this.state === STATE.RESULTS || this.state === STATE.MENU) Particles.update(dt);
+      return;
+    }
+
+    // --- PLAYING ---
+    Sound.updateMusic(this.rainbowTime > 0);
+
+    if (this.endingTimer > 0){       // game over gecikmesi (efektler görünsün)
+      this.endingTimer -= dt;
+      if (this.endingTimer <= 0){ this.endGame('GAME OVER'); return; }
+    } else {
+      const before = Math.ceil(this.timeLeft);
+      // Ritim modunda zaman kaynağı doğrudan şarkı: drift olmaz
+      if (this.rhythmMode && Music.isPlaying()) this.timeLeft = this.duration - Music.time();
+      else this.timeLeft -= dt;
+      const after = Math.ceil(this.timeLeft);
+      if (after !== before && after <= 5 && after > 0){
+        UI.toast(String(after), '#ffffff');
+        Sound.play('countdown', false);
+      }
+      if (this.timeLeft <= 0){
+        this.timeLeft = 0;
+        UI.toast("TIME'S UP", '#f0b23a');
+        this.endGame("TIME'S UP");
+        return;
+      }
+    }
+
+    if (this.rainbowTime > 0){
+      this.rainbowTime -= dt;
+      if (this.rainbowTime < 0) this.rainbowTime = 0;
+    }
+
+    this.player.update(dt, this.W);
+    if (this.rhythmMode){
+      Music.tick();                       // prosedürel müzik zamanlayıcısı
+      const st = this.duration - this.timeLeft;
+      Rhythm.update(this, st);
+      if (Rhythm.beatTick(st)) this.beatPulse = 1;
+      this.beatPulse = Math.max(0, this.beatPulse - dt * 3.4);
+    } else {
+      SpawnMgr.update(dt, this);
+    }
+
+    const rect = this.player.catchRect();
+    for (const n of NoodleMgr.pool){
+      if (!n.active) continue;
+      n.update(dt, this.W, this.H);
+
+      // collision (aynı frame'de iki kez yakalanmaz: active=false hemen)
+      const nb = n.y + n.r * 0.65;
+      if (nb >= rect.t && n.y <= rect.b && n.x >= rect.l - n.r*0.4 && n.x <= rect.r + n.r*0.4){
+        this.onCatch(n);
+        continue;
+      }
+      if (n.y - n.r > this.H + 20) this.onMiss(n);
+    }
+
+    Particles.update(dt);
+    Floats.update(dt);
+    if (this.shake > 0) this.shake -= dt;
+    if (this.flash > 0) this.flash -= dt;
+    UI.syncTime(this);
+  },
+
+  render(){
+    const ctx = this.ctx, W = this.W, H = this.H;
+    ctx.save();
+    if (this.shake > 0 && Store.data.settings.shake){
+      const m = this.shakeMag * (this.shake / 0.32);
+      ctx.translate(rand(-m, m), rand(-m, m));
+    }
+
+    BG.draw(ctx, W, H, this.rainbowTime > 0);
+
+    if (this.state === STATE.PLAYING || this.state === STATE.PAUSED || this.state === STATE.COUNTDOWN){
+      for (const n of NoodleMgr.pool) if (n.active) n.draw(ctx, this.time);
+      this.player.draw(ctx, this.time);
+    } else if (this.state === STATE.MENU){
+      // menüde dekoratif kase
+      this.player.targetX = W/2 + Math.sin(this.time * 0.6) * W * 0.13;
+      this.player.update(1/60, W);
+      this.player.draw(ctx, this.time);
+    }
+
+    Particles.draw(ctx);
+    Floats.draw(ctx);
+
+    if (this.beatPulse > 0.02 && !Store.data.settings.reducedMotion){
+      const bp = this.beatPulse;
+      const g = ctx.createRadialGradient(W/2, H*0.55, Math.min(W,H)*0.34, W/2, H*0.55, Math.max(W,H)*0.75);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(255,150,60,' + (0.18 * bp).toFixed(3) + ')');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    if (this.flash > 0){
+      ctx.globalAlpha = clamp(this.flash * 2.2, 0, 1);
+      ctx.fillStyle = this.flashColor; ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    if (CONFIG.DEBUG) this.drawDebug();
+  },
+
+  drawDebug(){
+    $('debug').textContent =
+      'FPS      ' + this.fps.toFixed(0) + '\n' +
+      'STATE    ' + this.state + '\n' +
+      'LEVEL    ' + this.level + '\n' +
+      'SCORE    ' + Math.floor(ScoreMgr.score) + '  (XP ' + Math.floor(ScoreMgr.xp) + ')\n' +
+      'COMBO    ' + ComboMgr.combo + ' (x' + ComboMgr.multiplier() + ')\n' +
+      'NOODLES  ' + NoodleMgr.count() + '\n' +
+      'PARTS    ' + Particles.active + '\n' +
+      'SPAWN    ' + SpawnMgr.timer.toFixed(2) + 's\n' +
+      'RAINBOW  ' + this.rainbowTime.toFixed(1) + '\n' +
+      'DIFF     ' + this.difficulty().toFixed(2) + '\n' +
+      '1-6 spawn · 0 +2000 puan';
+  }
+};
+
+/* ---------------------------------------------------------------- UI */
+const UI = {
+  game:null, shopTab:'bowl', toastTimer:null,
+  init(game){
+    this.game = game;
+    const clickSound = () => Sound.play('button');
+
+    const on = (id, fn) => { const el = $(id); el.addEventListener('click', () => { Sound.unlock(); clickSound(); fn(); }); };
+
+    on('btnPlay', () => {
+      if (!Store.data.tutorialSeen){ this.showScreen('scTutorial'); game.state = STATE.TUTORIAL; }
+      else this.openSongs();
+    });
+    on('btnTutOk', () => { Store.data.tutorialSeen = true; Store.save(); this.openSongs(); });
+    on('btnSongBack', () => { this.showScreen('scMenu'); game.state = STATE.MENU; });
+    on('btnLoadAll', () => $('fileAll').click());
+
+    $('fileAll').addEventListener('change', e => {
+      const files = Array.from(e.target.files).sort((a,b) => a.name.localeCompare(b.name, 'en', { numeric:true }));
+      const tracks = CONFIG.TRACKS.filter(t => t.bpm > 0);
+      files.forEach((f, i) => { if (tracks[i]) Music.setFile(tracks[i].id, f); });
+      e.target.value = '';
+      this.openSongs();
+    });
+
+    const slider = $('syncSlider');
+    slider.value = Store.data.settings.audioOffset || 0;
+    $('syncVal').textContent = slider.value + ' ms';
+    slider.addEventListener('input', () => {
+      Store.data.settings.audioOffset = parseInt(slider.value, 10) || 0;
+      $('syncVal').textContent = slider.value + ' ms';
+      Store.save();
+    });
+    on('btnShop', () => { this.openShop(); game.state = STATE.SHOP; });
+    on('btnResShop', () => { this.openShop(); game.state = STATE.SHOP; });
+    on('btnShopBack', () => { this.showScreen('scMenu'); game.state = STATE.MENU; });
+    on('btnScores', () => { this.openScores(); game.state = STATE.SCORES; });
+    on('btnScoresBack', () => { this.showScreen('scMenu'); game.state = STATE.MENU; });
+    on('btnWipe', () => {
+      if (confirm('Tüm kayıtlar (best score, coin, skinler) silinsin mi?')){
+        Store.reset(); this.openScores(); game.applySettingsToBody(); game.resize();
+      }
+    });
+    on('btnSettings', () => { this.openSettings(); game.state = STATE.SETTINGS; });
+    on('btnAccount', () => this.openAuth());
+    on('btnAuthBack', () => { this.showScreen('scMenu'); game.state = STATE.MENU; this.syncWho(); });
+    on('btnBoard', () => this.openBoard(game.track ? game.track.id : 'global'));
+    on('btnBoardBack', () => { this.showScreen('scMenu'); game.state = STATE.MENU; });
+    on('btnLogout', () => { Net.logout(); this.openAuth(); this.syncWho(); });
+
+    const doAuth = async (mode) => {
+      const u = $('inpUser').value.trim(), pw = $('inpPass').value;
+      const msg = $('authMsg'); msg.classList.remove('ok');
+      if (!Net.on()){ msg.textContent = 'Sunucu ayarlanmamış (CONFIG.SUPABASE boş).'; return; }
+      msg.textContent = 'Bağlanılıyor…';
+      try{
+        const name = mode === 'login' ? await Net.login(u, pw) : await Net.signup(u, pw);
+        msg.classList.add('ok'); msg.textContent = 'Hoş geldin, ' + name;
+        $('inpPass').value = '';
+        this.openAuth(); this.syncWho();
+      }catch(e){
+        let t = e.message || 'Hata';
+        if (/Invalid login/i.test(t)) t = 'Kullanıcı adı veya şifre hatalı';
+        if (/already registered|User already/i.test(t)) t = 'Bu kullanıcı adı alınmış';
+        if (/Failed to fetch|NetworkError/i.test(t)) t = 'İnternet yok veya sunucuya ulaşılamıyor';
+        msg.textContent = t;
+      }
+    };
+    $('btnLogin').addEventListener('click', () => { Sound.play('button'); doAuth('login'); });
+    $('btnSignup').addEventListener('click', () => { Sound.play('button'); doAuth('signup'); });
+    $('inpPass').addEventListener('keydown', e => { if (e.key === 'Enter') doAuth('login'); });
+
+    const pick = $('boardPick');
+    pick.innerHTML = '<option value="global">GLOBAL (tüm parçalar)</option>' +
+      CONFIG.TRACKS.filter(t => t.bpm).map(t => '<option value="' + t.id + '">' + t.name + '</option>').join('');
+    pick.addEventListener('change', () => this.openBoard(pick.value));
+
+    this.syncWho();
+    if (Net.on() && Net.loggedIn()) Net.flush();
+    on('btnSetBack', () => { this.showScreen('scMenu'); game.state = STATE.MENU; });
+    on('pauseBtn', () => game.pause());
+    on('btnResume', () => game.resume());
+    on('btnRestart', () => game.startGame(game.track));
+    on('btnQuit', () => game.quitToMenu());
+    on('btnAgain', () => game.startGame(game.track));
+    on('btnPickSong', () => this.openSongs());
+    on('btnMenu', () => game.quitToMenu());
+
+    // shop sekmeleri
+    const tabs = [['bowl','BOWL'],['chopsticks','CHOPSTICKS'],['background','BACKGROUND'],['effect','EFFECT']];
+    const tabWrap = $('shopTabs');
+    tabWrap.innerHTML = '';
+    for (const [id, label] of tabs){
+      const b = document.createElement('div');
+      b.className = 'tab' + (id === this.shopTab ? ' on' : '');
+      b.textContent = label; b.dataset.tab = id;
+      b.addEventListener('click', () => { Sound.play('button'); this.shopTab = id; this.openShop(); });
+      tabWrap.appendChild(b);
+    }
+    this.renderHearts(CONFIG.STARTING_LIVES);
+  },
+
+  resetCache(){
+    this._score = -1; this._level = -1; this._lives = -1; this._combo = -1; this._t = -1;
+    $('hudCombo').classList.remove('on');
+    $('rainbowBar').classList.remove('on');
+    $('hudTime').classList.remove('warn');
+  },
+
+  showScreen(id){
+    ['scMenu','scTutorial','scPause','scResults','scSettings','scShop','scScores','scSongs','scAuth','scBoard']
+      .forEach(s => $(s).classList.toggle('hidden', s !== id));
+  },
+  hud(on){ $('hud').classList.toggle('on', !!on); },
+  setCountdown(txt){
+    const el = $('cdText');
+    el.textContent = txt;
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  },
+  toast(text, color){
+    const el = $('toast');
+    el.textContent = text; el.style.color = color || '#fff';
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  },
+  shakeHeart(){
+    const hs = $('hearts').children;
+    for (const h of hs){ h.classList.remove('shake'); void h.offsetWidth; h.classList.add('shake'); }
+  },
+  renderHearts(lives){
+    const el = $('hearts');
+    let html = '';
+    for (let i = 0; i < CONFIG.STARTING_LIVES; i++)
+      html += '<span class="heart' + (i < lives ? '' : ' dead') + '">♥</span>';
+    el.innerHTML = html;
+  },
+
+  syncTime(game){
+    const t = Math.ceil(game.timeLeft);
+    if (this._t !== t){
+      this._t = t;
+      $('timeVal').textContent = t;
+      $('hudTime').classList.toggle('warn', t <= 10);
+    }
+    const rb = game.rainbowTime > 0;
+    $('rainbowBar').classList.toggle('on', rb);
+    if (rb) $('rbFill').style.width = (game.rainbowTime / CONFIG.RAINBOW_DURATION * 100).toFixed(1) + '%';
+  },
+
+  syncAll(game){
+    if (this._score !== ScoreMgr.score){
+      this._score = ScoreMgr.score;
+      $('scoreVal').textContent = fmt(ScoreMgr.score);
+    }
+    if (this._level !== game.level){ this._level = game.level; $('levelVal').textContent = game.level; }
+    if (this._lives !== game.lives){ this._lives = game.lives; this.renderHearts(Math.max(0, game.lives)); }
+    const c = ComboMgr.combo;
+    if (this._combo !== c){
+      this._combo = c;
+      const el = $('hudCombo');
+      el.classList.toggle('on', c >= 2);
+      if (c >= 2){
+        const m = ComboMgr.multiplier();
+        el.textContent = 'COMBO x' + c + (m > 1 ? '  (' + m + 'x)' : '');
+        el.style.color = c >= 30 ? '#ff8fc0' : (c >= 10 ? '#ffb03a' : '#f6ead2');
+        el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+      }
+    }
+    this.syncTime(game);
+  },
+
+  showResults(game, reason, isRecord, coins){
+    $('resTitle').textContent = reason;
+    $('resTitle').classList.toggle('win', isRecord);
+    $('resScore').textContent = fmt(ScoreMgr.score);
+    $('resNew').style.display = isRecord ? 'block' : 'none';
+    $('resCoins').textContent = '+' + fmt(coins) + ' coins';
+    $('stBest').textContent = fmt(Store.data.bestScore);
+    $('stLevel').textContent = game.level;
+    $('stCombo').textContent = ComboMgr.max;
+    $('stCaught').textContent = game.stats.caught;
+    $('stSpicy').textContent = game.stats.spicy;
+    $('stRainbow').textContent = game.stats.rainbow;
+    $('stGolden').textContent = game.stats.golden;
+    $('stRotten').textContent = game.stats.rotten;
+    $('stTime').textContent = game.stats.timeSurvived + 's';
+    $('stCoins').textContent = fmt(Store.data.totalCoins);
+    const net = $('resNet'); net.classList.remove('ok');
+    if (!Net.on()) net.textContent = '';
+    else if (!Net.loggedIn()) net.textContent = 'Sıralamaya girmek için giriş yap (ACCOUNT)';
+    else {
+      net.textContent = 'Skor gönderiliyor…';
+      Net.submit({
+        track_id: (game.track && game.track.id) || 'classic',
+        score: Math.floor(ScoreMgr.score),
+        max_combo: ComboMgr.max,
+        level: game.level,
+        caught: game.stats.caught,
+        duration_s: Math.round(game.duration)
+      }).then(res => {
+        if (res.ok){ net.classList.add('ok'); net.textContent = 'Skor sıralamaya gönderildi'; }
+        else if (res.reason === 'queued') net.textContent = 'İnternet yok — skor kuyruğa alındı';
+        else net.textContent = 'Gönderilemedi (giriş gerekli)';
+      });
+    }
+    this.showScreen('scResults');
+    if (isRecord) Particles.burst(game.W/2, game.H*0.32, 'golden', 40);
+  },
+
+  openSongs(){
+    const game = this.game;
+    game.state = STATE.MENU;
+    const list = $('songList'); list.innerHTML = '';
+    CONFIG.TRACKS.forEach((tr, i) => {
+      const row = document.createElement('div');
+      row.className = 'song';
+      const idx = document.createElement('div'); idx.className = 'idx';
+      idx.textContent = tr.bpm ? String(i + 1).padStart(2, '0') : '--';
+      const meta = document.createElement('div'); meta.className = 'meta';
+      const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = tr.name;
+      const info = document.createElement('div'); info.className = 'info';
+      info.textContent = tr.bpm ? (tr.bpm + ' BPM · ' + tr.diff + ' · aranıyor…') : 'Müziksiz klasik mod · 90 sn';
+      meta.appendChild(nm); meta.appendChild(info);
+      const load = document.createElement('div'); load.className = 'load';
+      load.textContent = tr.bpm ? 'MP3 SEÇ' : 'OYNA';
+      row.appendChild(idx); row.appendChild(meta); row.appendChild(load);
+
+      if (tr.bpm){
+        row.classList.add('ready');
+        info.textContent = tr.bpm + ' BPM · ' + tr.diff + ' · oyun müziği (90 sn)';
+        load.textContent = 'MP3 EKLE';
+        Music.probe(tr, dur => {
+          if (dur){
+            info.textContent = tr.bpm + ' BPM · ' + tr.diff + ' · MP3 · ' + dur.toFixed(1) + ' sn';
+            load.textContent = 'MP3 ✓';
+          }
+        });
+        // satırdaki butondan tek dosya yükleme
+        load.addEventListener('click', ev => {
+          ev.stopPropagation();
+          const inp = document.createElement('input');
+          inp.type = 'file'; inp.accept = 'audio/*';
+          inp.addEventListener('change', () => {
+            if (inp.files[0]){ Music.setFile(tr.id, inp.files[0]); this.openSongs(); }
+          });
+          inp.click();
+        });
+      }
+
+      row.addEventListener('click', () => { Sound.play('button'); game.startGame(tr); });
+      list.appendChild(row);
+    });
+    this.showScreen('scSongs');
+  },
+
+  syncWho(){
+    const w = $('whoMini'), b = $('btnAccount');
+    if (!Net.on()){ w.textContent = ''; b.textContent = 'ACCOUNT'; return; }
+    if (Net.loggedIn()){ w.textContent = '@' + Net.auth().username; b.textContent = 'ACCOUNT'; }
+    else { w.textContent = 'giriş yapılmadı — skorlar sadece bu cihazda'; b.textContent = 'GİRİŞ'; }
+  },
+
+  openAuth(){
+    const inOk = Net.loggedIn();
+    $('authForm').style.display = inOk ? 'none' : 'block';
+    $('authInfo').style.display = inOk ? 'block' : 'none';
+    $('authMsg').textContent = '';
+    if (inOk){
+      $('authWho').textContent = '@' + Net.auth().username;
+      const q = (Store.data.pending || []).length;
+      $('authStats').textContent = q ? (q + ' skor gönderilmeyi bekliyor') : 'skorların sıralamaya gönderiliyor';
+      $('authSub').textContent = 'GİRİŞ YAPILDI';
+    } else {
+      $('authSub').textContent = Net.on() ? 'SKORUNU SIRALAMAYA GÖNDER' : 'SUNUCU AYARLANMAMIŞ';
+    }
+    this.showScreen('scAuth');
+    this.game.state = STATE.MENU;
+  },
+
+  async openBoard(trackId){
+    const list = $('boardList'), msg = $('boardMsg');
+    $('boardPick').value = trackId || 'global';
+    list.innerHTML = ''; msg.textContent = 'Yükleniyor…';
+    this.showScreen('scBoard'); this.game.state = STATE.MENU;
+    if (!Net.on()){ msg.textContent = 'Sunucu ayarlanmamış — CONFIG.SUPABASE alanını doldur.'; return; }
+    try{
+      const rows = await Net.board($('boardPick').value);
+      msg.textContent = rows.length ? '' : 'Henüz skor yok. İlk sen ol.';
+      const me = Net.auth().username;
+      rows.forEach((r, i) => {
+        const div = document.createElement('div');
+        div.className = 'brow' + (r.username === me ? ' me' : '');
+        const rank = document.createElement('div');
+        rank.className = 'rank' + (i < 3 ? ' top' : ''); rank.textContent = '#' + (i + 1);
+        const who = document.createElement('div'); who.className = 'who'; who.textContent = r.username || '-';
+        const sc = document.createElement('div'); sc.className = 'sc'; sc.textContent = fmt(r.score);
+        const ex = document.createElement('div'); ex.className = 'extra';
+        ex.textContent = 'x' + (r.max_combo || 0) + ' · L' + (r.level || 1);
+        div.appendChild(rank); div.appendChild(who); div.appendChild(sc); div.appendChild(ex);
+        list.appendChild(div);
+      });
+    }catch(e){
+      msg.textContent = /Failed to fetch|NetworkError/i.test(e.message) ? 'İnternet yok.' : ('Hata: ' + e.message);
+    }
+  },
+
+  openScores(){
+    $('hsBest').textContent = fmt(Store.data.bestScore);
+    $('hsCombo').textContent = Store.data.bestCombo;
+    $('hsLevel').textContent = Store.data.highestLevel;
+    $('hsCoins').textContent = fmt(Store.data.totalCoins);
+    this.showScreen('scScores');
+  },
+
+  openSettings(){
+    const list = $('settingsList');
+    list.innerHTML = '';
+
+    // --- ses seviyeleri ---
+    const vols = [['masterVol','Master volume'],['musicVol','Music volume'],['sfxVol','Sound effects']];
+    for (const [key, label] of vols){
+      const row = document.createElement('div'); row.className = 'setting vol';
+      const nm = document.createElement('div'); nm.textContent = label; nm.style.flex = '0 0 42%';
+      const sl = document.createElement('input');
+      sl.type = 'range'; sl.min = '0'; sl.max = '100'; sl.step = '5';
+      sl.value = Math.round((Store.data.settings[key] || 0) * 100);
+      sl.style.flex = '1';
+      const val = document.createElement('span'); val.className = 'volval'; val.textContent = sl.value + '%';
+      sl.addEventListener('input', () => {
+        Store.data.settings[key] = parseInt(sl.value, 10) / 100;
+        val.textContent = sl.value + '%';
+        Sound.applyVolumes(); Store.save();
+      });
+      sl.addEventListener('change', () => Sound.play('button'));
+      row.appendChild(nm); row.appendChild(sl); row.appendChild(val); list.appendChild(row);
+    }
+
+    // --- performans modu ---
+    const prow = document.createElement('div'); prow.className = 'setting';
+    const pnm = document.createElement('div'); pnm.textContent = 'Performance mode';
+    const pbtn = document.createElement('div'); pbtn.className = 'tab on'; pbtn.style.cursor = 'pointer';
+    const pLabels = { auto:'AUTO', on:'LOW FX', off:'FULL FX' };
+    pbtn.textContent = pLabels[Store.data.settings.perf] || 'AUTO';
+    pbtn.addEventListener('click', () => {
+      const order = ['auto','on','off'];
+      const next = order[(order.indexOf(Store.data.settings.perf) + 1) % order.length];
+      Store.data.settings.perf = next; pbtn.textContent = pLabels[next];
+      Store.save(); Sound.play('button'); Perf.update(this.game);
+    });
+    prow.appendChild(pnm); prow.appendChild(pbtn); list.appendChild(prow);
+
+    const items = [['sound','Sound'],['music','Music'],['particles','Particles'],
+                   ['shake','Screen shake'],['reducedMotion','Reduced motion'],['haptics','Vibration (mobil)']];
+    for (const [key, label] of items){
+      const row = document.createElement('div'); row.className = 'setting';
+      const nm = document.createElement('div'); nm.textContent = label;
+      const tg = document.createElement('div');
+      tg.className = 'toggle' + (Store.data.settings[key] ? ' on' : '');
+      tg.innerHTML = '<i></i>';
+      tg.setAttribute('role','switch'); tg.tabIndex = 0;
+      const flip = () => {
+        Store.data.settings[key] = !Store.data.settings[key];
+        tg.classList.toggle('on', Store.data.settings[key]);
+        Store.save(); Sound.play('button');
+        if (key === 'reducedMotion'){ this.game.applySettingsToBody(); this.game.resize(); }
+        if (key === 'music' && !Store.data.settings.music){ Sound.stopMusic(); Music.pause(); }
+        if (key === 'sound' || key === 'music') Sound.applyVolumes();
+      };
+      tg.addEventListener('click', flip);
+      tg.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); flip(); } });
+      row.appendChild(nm); row.appendChild(tg); list.appendChild(row);
+    }
+    this.showScreen('scSettings');
+  },
+
+  openShop(){
+    const cat = this.shopTab;
+    for (const t of $('shopTabs').children) t.classList.toggle('on', t.dataset.tab === cat);
+    $('shopWallet').textContent = fmt(Store.data.totalCoins) + ' coins';
+    const grid = $('shopGrid'); grid.innerHTML = '';
+    for (const item of SKINS[cat]){
+      const owned = Store.data.unlocked[cat].includes(item.id);
+      const active = Store.data.selected[cat] === item.id;
+      const div = document.createElement('div');
+      div.className = 'item' + (owned ? ' owned' : '') + (active ? ' active' : '');
+      const sw = document.createElement('div'); sw.className = 'swatch';
+      if (cat === 'bowl') sw.style.background = 'linear-gradient(135deg,' + item.body + ',' + item.rim + ')';
+      else if (cat === 'chopsticks') sw.style.background = 'linear-gradient(135deg,' + item.body + ',' + item.tip + ')';
+      else if (cat === 'background') sw.style.background = 'linear-gradient(160deg,' + item.sky1 + ',' + item.sky2 + ' 60%,' + item.accent + ')';
+      else sw.style.background = 'linear-gradient(90deg,' + item.colors.join(',') + ')';
+      const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = item.name;
+      const pr = document.createElement('div'); pr.className = 'pr';
+      pr.textContent = active ? 'SEÇİLİ' : (owned ? 'Kullan' : item.price + ' coins');
+      div.appendChild(sw); div.appendChild(nm); div.appendChild(pr);
+      div.addEventListener('click', () => {
+        Sound.play('button');
+        if (owned){
+          Store.data.selected[cat] = item.id; Store.save();
+          if (cat === 'background') this.game.resize();
+          this.openShop();
+        } else if (Store.data.totalCoins >= item.price){
+          Store.data.totalCoins -= item.price;
+          Store.data.unlocked[cat].push(item.id);
+          Store.data.selected[cat] = item.id;
+          Store.save();
+          if (cat === 'background') this.game.resize();
+          this.openShop();
+        } else {
+          pr.textContent = 'YETERSİZ COIN';
+          setTimeout(() => this.openShop(), 900);
+        }
+      });
+      grid.appendChild(div);
+    }
+    this.showScreen('scShop');
+  }
+};
+
+/* ---------------------------------------------------------------- MOBİL KÖPRÜ (WebView / Expo) */
+window.RamenRush = {
+  // Android donanım geri tuşu: açık ekranı kapat, oyundaysa duraklat, menüdeysek uygulamadan çık
+  back(){
+    const g = Game;
+    if (g.state === STATE.PLAYING){ g.pause(); return true; }
+    const openScreen = ['scPause','scResults','scSettings','scShop','scScores','scSongs','scAuth','scBoard','scTutorial']
+      .find(id => !$(id).classList.contains('hidden'));
+    if (openScreen === 'scPause'){ g.quitToMenu(); return true; }
+    if (openScreen){ UI.showScreen('scMenu'); g.state = STATE.MENU; UI.syncWho(); return true; }
+    if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage('exit');
+    return false;
+  },
+  pause(){ if (Game.state === STATE.PLAYING) Game.pause(); },
+  isNative(){ return !!window.ReactNativeWebView; }
+};
+
+/* ---------------------------------------------------------------- BOOT */
+window.addEventListener('DOMContentLoaded', () => Game.init());
+</script>
+</body>
+</html>
