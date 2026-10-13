@@ -1,0 +1,27 @@
+# bagimliliklar
+node_modules/
+.expo/
+.expo-shared/
+
+# build ciktilari
+mobile/assets/gameHtml.js
+*.apk
+*.aab
+dist/
+web-build/
+
+# ses dosyalari (telif) — kendi parcani gomersen depoya girmesin
+*.mp3
+*.m4a
+*.wav
+*.ogg
+*.opus
+*.aac
+
+# isletim sistemi / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+npm-debug.log*

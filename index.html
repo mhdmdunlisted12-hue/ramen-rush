@@ -88,6 +88,18 @@ h2.title.win{color:var(--gold);text-shadow:0 0 26px rgba(255,211,92,.6)}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.primary:active{box-shadow:0 4px 0 rgba(120,25,20,.55)}
 .btn.small{font-size:15px;padding:11px 14px}
+.btn.endless{background:linear-gradient(180deg,#7b2ff7,#c0392b);border-color:rgba(255,190,220,.55);
+  font-size:20px;box-shadow:0 8px 0 rgba(60,12,80,.55)}
+.btn.endless:hover{filter:brightness(1.1)}
+.btn.endless:active{box-shadow:0 3px 0 rgba(60,12,80,.55)}
+.song.endless-row{border-color:rgba(192,57,43,.7);background:linear-gradient(90deg,rgba(123,47,247,.22),rgba(192,57,43,.14))}
+.speedbox{display:flex;align-items:center;gap:12px;margin:10px 0 4px;font-size:13px;letter-spacing:.14em}
+.speedbox input{flex:1;-webkit-appearance:none;height:6px;border-radius:6px;background:rgba(255,255,255,.18);outline:none}
+.speedbox input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;
+  background:var(--chili);cursor:pointer;border:2px solid rgba(255,220,200,.6)}
+.speedbox input::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--chili);border:2px solid rgba(255,220,200,.6)}
+.speedval{font-weight:900;color:var(--ember);width:54px;text-align:right}
+.speedhint{font-size:11px;opacity:.5;letter-spacing:.1em;margin-bottom:6px}
 .row{display:flex;gap:10px}
 .row .btn{margin:9px 0}
 .list{text-align:left;font-size:16px;line-height:1.85;margin:4px 0 22px}
@@ -194,7 +206,7 @@ select.picker{width:100%;padding:11px 12px;border-radius:12px;border:2px solid v
     <div class="hud-box" id="hudLives"><div class="hud-label">LIVES</div><div id="hearts"></div></div>
     <div class="hud-box" id="hudCenter">
       <div id="hudLevel"><div class="hud-label">LEVEL</div><div class="hud-val" id="levelVal">1</div></div>
-      <div id="hudTime"><div class="hud-label">TIME</div><div class="hud-val" id="timeVal">90</div></div>
+      <div id="hudTime"><div class="hud-label" id="timeLbl">TIME</div><div class="hud-val" id="timeVal">90</div></div>
     </div>
     <div class="hud-box" id="hudScore"><div class="hud-label">SCORE</div><div class="hud-val" id="scoreVal">0</div></div>
     <div id="rainbowBar"><div class="rb-label">RAINBOW MODE</div><div class="rb-track"><div class="rb-fill" id="rbFill"></div></div></div>
@@ -212,12 +224,13 @@ select.picker{width:100%;padding:11px 12px;border-radius:12px;border:2px solid v
     <div class="logo-sub">ラーメン ラッシュ · RHYTHM ARCADE</div>
     <div style="width:min(340px,86vw)">
       <button class="btn primary" id="btnPlay">PLAY</button>
+      <button class="btn endless" id="btnEndless">∞ SINIRSIZ MOD</button>
       <div class="row"><button class="btn" id="btnShop">SHOP</button><button class="btn" id="btnScores">SCORES</button></div>
       <div class="row"><button class="btn" id="btnBoard">RANKING</button><button class="btn" id="btnAccount">ACCOUNT</button></div>
       <button class="btn" id="btnSettings">SETTINGS</button>
       <div class="who-mini" id="whoMini"></div>
     </div>
-    <div class="hint">Ramenler müziğin ritmine düşer · 90 saniye · en yüksek skoru yap</div>
+    <div class="hint">Ramenler müziğin ritmine düşer · 90 saniyelik maç ya da ∞ sınırsız mod</div>
   </div>
 
   <!-- ACCOUNT -->
@@ -256,6 +269,8 @@ select.picker{width:100%;padding:11px 12px;border-radius:12px;border:2px solid v
     <div class="panel wide">
       <h2 class="title">SELECT TRACK</h2><div class="sub">RAMENLER BU RİTİMDE DÜŞECEK · MP3 GEREKMEZ</div>
       <div class="songs" id="songList"></div>
+      <div class="speedbox"><span>HIZ</span><input type="range" id="spdSlider"><span class="speedval" id="spdVal">1x</span></div>
+      <div class="speedhint">Ramenler aynı vuruşta iner, sadece daha hızlı düşer — ritim bozulmaz</div>
       <div class="sync"><span>SYNC</span><input type="range" id="syncSlider" min="-300" max="300" step="10" value="0"><span id="syncVal">0 ms</span></div>
       <input type="file" id="fileAll" accept="audio/*" multiple style="display:none">
       <button class="btn small" id="btnLoadAll">KENDİ MP3'LERİNİ YÜKLE (opsiyonel, sırayla eşlenir)</button>
@@ -274,7 +289,7 @@ select.picker{width:100%;padding:11px 12px;border-radius:12px;border:2px solid v
         <b>Rainbow noodle</b> 10 saniyelik Rainbow Mode açar.<br>
         <b>Golden noodle</b> büyük bonus verir.<br>
         <b>Rotten noodle</b>'dan kaç: skor sıfırlanır, can gider.<br>
-        90 saniyede en yüksek skoru yap.<br><b>Ramenler müziğin vuruşuna göre düşer</b> — ritme uy.
+        90 saniyede en yüksek skoru yap.<br><b>Ramenler müziğin vuruşuna göre düşer</b> — ritme uy.<br><b>∞ Sınırsız mod</b>: süre yok, canların bitene kadar.<br>Hız çubuğuyla tempoyu kendine göre ayarla.
       </div>
       <button class="btn primary" id="btnTutOk">BAŞLA</button>
     </div>
@@ -294,7 +309,7 @@ select.picker{width:100%;padding:11px 12px;border-radius:12px;border:2px solid v
   <div class="screen hidden" id="scResults"><div class="scrim"></div>
     <div class="panel wide">
       <h2 class="title" id="resTitle">TIME'S UP</h2>
-      <div class="sub">FINAL SCORE</div>
+      <div class="sub" id="resSub">FINAL SCORE</div>
       <div class="big-score" id="resScore">0</div>
       <div class="newrec" id="resNew" style="display:none">NEW HIGH SCORE</div>
       <div class="coins" id="resCoins">+0 coins</div>
@@ -332,6 +347,7 @@ select.picker{width:100%;padding:11px 12px;border-radius:12px;border:2px solid v
       <h2 class="title">HIGH SCORE</h2><div class="sub">KAYITLI İSTATİSTİKLER</div>
       <div class="big-score" id="hsBest">0</div>
       <div class="stats" style="grid-template-columns:1fr">
+        <div class="stat"><span>Sınırsız rekor</span><span id="hsEndless">0</span></div>
         <div class="stat"><span>Best combo</span><span id="hsCombo">0</span></div>
         <div class="stat"><span>Highest level</span><span id="hsLevel">1</span></div>
         <div class="stat"><span>Total coins</span><span id="hsCoins">0</span></div>
@@ -355,6 +371,10 @@ select.picker{width:100%;padding:11px 12px;border-radius:12px;border:2px solid v
 
 <script>
 "use strict";
+/* ===== GÖMÜLÜ ŞARKI: MATADORA (Phonk) — 102 BPM, 16 bar tam loop =====
+   Dosya base64 olarak buraya gömülü; harici mp3 gerekmez. Web Audio ile
+   çözülüp örnek hassasiyetinde loop'lanır (loopStart/loopEnd). */
+const EMBEDDED_TRACK_B64 = "";
 /* =========================================================================
    RAMEN RUSH — tek dosya, bağımlılıksız HTML5 Canvas arcade oyunu
    Bölümler: CONFIG > UTILS > STORAGE > AUDIO > PARTICLES > BACKGROUND >
@@ -403,6 +423,30 @@ const CONFIG = {
   COMBO_TIERS: [[30,3],[20,2],[10,1.5],[5,1.2],[0,1]],
   DEBUG: false,
 
+  /* ---- SINIRSIZ MOD ---- */
+  ENDLESS: {
+    id:'endless',
+    trackName:'MATADORA (Phonk)',
+    bpm:102,
+    bars:16,                 // gömülü loop'un uzunluğu (tam bar)
+    subdiv:4,                // vuruş başına grid adımı (16'lık nota)
+    rampSeconds:150,         // bu sürede zorluk tavana ulaşır (sonra sabit)
+    fallTighten:0.26,        // tavanda tepki süresi bu oranda kısalır
+    levelEveryXp:900,        // sınırsız modda level eşiği (sabit aralık)
+    /* 16'lık grid, 16 adım = 1 bar. Bar 2.35sn olduğundan bar başına 3-6 nota
+       ≈ 1.3-2.6 noodle/sn; 90 saniyelik modların hedefi 1.4/sn. */
+    SECTIONS:[
+      { fall:1.50, pattern:'1000001000001000' },   // ısınma   3/bar
+      { fall:1.40, pattern:'1000100010001000' },   // akış     4/bar
+      { fall:1.32, pattern:'1000100010010100' },   // yoğun    5/bar
+      { fall:1.38, pattern:'1001000010001000' },   // nefes    4/bar
+      { fall:1.26, pattern:'1010100010010100' }    // zirve    6/bar
+    ]
+  },
+
+  /* ---- HIZ AYARI (oyuncu çubuğu) ---- */
+  SPEED: { min:0.6, max:2.0, step:0.05, def:1.0 },
+
   /* ---- SUPABASE (hesap + sıralama). Boş bırakılırsa oyun tamamen offline çalışır. ---- */
   SUPABASE: {
     url: '',            // örn: https://xxxx.supabase.co
@@ -438,6 +482,8 @@ const CONFIG = {
     { id:'t8',  name:'Dragon Wok',           bpm:160, diff:'HARD',   style:'taiko',    root:50, mode:'minor', seed:8808, file:'audio/08.mp3' },
     { id:'t9',  name:'Golden Hour Slurp',    bpm:148, diff:'NORMAL', style:'funk',     root:56, mode:'major', seed:9909, file:'audio/09.mp3' },
     { id:'t10', name:'Final Rush',           bpm:174, diff:'EXPERT', style:'dnb',      root:49, mode:'minor', seed:1010, file:'audio/10.mp3' },
+    { id:'endless', name:'MATADORA — SINIRSIZ', bpm:102, diff:'ENDLESS',
+      style:'hardcore', root:49, mode:'minor', seed:4242, file:null, embedded:true, endless:true },
     { id:'classic', name:'Classic (müziksiz)', bpm:0, diff:'FREE', style:null, file:null }
   ]
 };
@@ -504,11 +550,11 @@ const Store = {
   data: null,
   defaults(){
     return {
-      bestScore:0, bestCombo:0, highestLevel:1, totalCoins:0, tutorialSeen:false,
+      bestScore:0, bestCombo:0, highestLevel:1, totalCoins:0, bestEndless:0, tutorialSeen:false,
       unlocked:{ bowl:['classic'], chopsticks:['bamboo'], background:['tokyo'], effect:['sakura'] },
       selected:{ bowl:'classic', chopsticks:'bamboo', background:'tokyo', effect:'sakura' },
       settings:{ sound:true, music:true, particles:true, shake:true, reducedMotion:false, audioOffset:0,
-                 masterVol:0.9, musicVol:0.8, sfxVol:0.8, perf:'auto', haptics:true },
+                 masterVol:0.9, musicVol:0.8, sfxVol:0.8, perf:'auto', haptics:true, speed:1.0 },
       auth:{ token:null, refresh:null, expires:0, username:null, userId:null },
       pending:[]
     };
@@ -528,6 +574,10 @@ const Store = {
       }
       if (!this.data.auth || typeof this.data.auth !== 'object') this.data.auth = def.auth;
       if (!Array.isArray(this.data.pending)) this.data.pending = [];
+      if (typeof this.data.bestEndless !== 'number' || !isFinite(this.data.bestEndless)) this.data.bestEndless = 0;
+      const sp = this.data.settings.speed;
+      if (typeof sp !== 'number' || !isFinite(sp) || sp < CONFIG.SPEED.min || sp > CONFIG.SPEED.max)
+        this.data.settings.speed = CONFIG.SPEED.def;
       ['bestScore','bestCombo','highestLevel','totalCoins'].forEach(k=>{
         if (typeof this.data[k] !== 'number' || !isFinite(this.data[k])) this.data[k] = def[k];
       });
@@ -1212,7 +1262,7 @@ const SpawnMgr = {
     this.timer -= dt;
     if (this.timer > 0) return;
 
-    const elapsed = game.duration - game.timeLeft;
+    const elapsed = game.elapsed;
     const d = game.difficulty();
     let interval = CONFIG.BASE_SPAWN_INTERVAL / d;
     if (game.rainbowTime > 0) interval /= CONFIG.RAINBOW_SPAWN_BOOST;
@@ -1239,7 +1289,7 @@ const SpawnMgr = {
     if (mega) speed *= 0.6;
     if (type === 'rotten') speed *= 0.88;                     // çürük okunabilir kalsın
     NoodleMgr.spawn(type, x, -r - 12, r, speed, mega);
-    const el = game.duration - game.timeLeft;
+    const el = game.elapsed;
     if (type === 'rotten')  this.lastRotten = el;
     if (type === 'rainbow') this.lastRainbow = el;
     if (type === 'golden')  this.lastGolden = el;
@@ -1478,7 +1528,7 @@ const Proc = {
   start(track, duration){
     Sound.init();
     if (!Sound.ctx) return false;
-    this.track = track; this.duration = duration || CONFIG.GAME_DURATION;
+    this.track = track; this.duration = (duration && isFinite(duration)) ? duration : 3600;
     this.build(track);
     if (!this.out){
       this.out = Sound.ctx.createGain();
@@ -1587,7 +1637,103 @@ const Proc = {
   }
 };
 
-/* ---------------------------------------------------------------- MUSIC (facade: mp3 varsa mp3, yoksa prosedürel) */
+/* ---------------------------------------------------------------- GÖMÜLÜ ŞARKI (sınırsız mod)
+   Dosya HTML'in içinde (base64). Web Audio ile çözülüp örnek hassasiyetinde loop'lanır:
+   MP3 encoder padding'i loop'ta boşluk yapmasın diye loopStart runtime'da kalibre edilir. */
+const Embedded = {
+  buffer:null, state:'idle', loopStart:0, loopEnd:0, barLen:0,
+  src:null, gain:null, startAt:0, pausedAt:0, playing:false, onReady:null,
+
+  load(cb){
+    this.onReady = cb || null;
+    if (this.state === 'ready'){ if (cb) cb(true); return; }
+    if (this.state === 'loading') return;
+    Sound.init();
+    if (!Sound.ctx || typeof EMBEDDED_TRACK_B64 === 'undefined' || !EMBEDDED_TRACK_B64.length){
+      this.state = 'fail'; if (cb) cb(false); return;
+    }
+    this.state = 'loading';
+    try{
+      const bin = atob(EMBEDDED_TRACK_B64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const done = buf => {
+        this.buffer = buf;
+        this.calibrate();
+        this.state = 'ready';
+        if (this.onReady) this.onReady(true);
+      };
+      const fail = () => { this.state = 'fail'; if (this.onReady) this.onReady(false); };
+      const ret = Sound.ctx.decodeAudioData(bytes.buffer, done, fail);
+      if (ret && ret.then) ret.then(done).catch(fail);
+    }catch(e){ this.state = 'fail'; if (cb) cb(false); }
+  },
+
+  /* Loop'u tam 64 vuruşa oturt.
+     Kaynak zaten downbeat'ten kesildi; tek değişken tarayıcının MP3 encoder
+     padding'ini kırpıp kırpmadığı. Kırpmışsa (süre ≈ hedef) baştan başlanır;
+     kırpmamışsa baştaki sessizlik kadar kaydırılır. */
+  calibrate(){
+    const b = this.buffer, sr = b.sampleRate;
+    const beat = 60 / CONFIG.ENDLESS.bpm;
+    this.barLen = beat * 4;
+    const want = this.barLen * CONFIG.ENDLESS.bars;
+    const extra = b.duration - want;
+
+    if (extra < 0.02){
+      this.loopStart = 0;
+      this.loopEnd = Math.min(b.duration, want);
+    } else {
+      const d = b.getChannelData(0);
+      const scan = Math.min(d.length, Math.floor(Math.min(extra, 0.4) * sr));
+      let peak = 0;
+      for (let i = 0; i < scan; i++){ const v = Math.abs(d[i]); if (v > peak) peak = v; }
+      const th = Math.max(0.008, peak * 0.12);
+      let start = 0;
+      for (let i = 0; i < scan; i++){ if (Math.abs(d[i]) > th){ start = i; break; } }
+      this.loopStart = start / sr;
+      this.loopEnd = this.loopStart + want;
+    }
+    // Güvenlik: hedef sığmıyorsa baştan tam uzunluk
+    if (!isFinite(this.loopEnd) || this.loopEnd > b.duration + 1e-4 || this.loopEnd <= this.loopStart){
+      this.loopStart = 0;
+      this.loopEnd = Math.min(b.duration, want);
+    }
+  },
+
+  loopLength(){ return this.loopEnd - this.loopStart; },
+
+  // offset: loop içindeki başlangıç noktası (sn)
+  play(offset){
+    if (this.state !== 'ready' || !Sound.ctx) return false;
+    this.stopNode();
+    const c = Sound.ctx;
+    const src = c.createBufferSource();
+    src.buffer = this.buffer;
+    src.loop = true;
+    src.loopStart = this.loopStart;
+    src.loopEnd = this.loopEnd;
+    if (!this.gain){ this.gain = c.createGain(); this.gain.connect(Sound.master); }
+    Sound.applyVolumes();
+    src.connect(this.gain);
+    const off = this.loopStart + (((offset || 0) % this.loopLength()) + this.loopLength()) % this.loopLength();
+    const t = c.currentTime + 0.04;
+    src.start(t, off);
+    this.src = src;
+    this.startAt = t - (offset || 0);
+    this.playing = true;
+    return true;
+  },
+  stopNode(){
+    if (this.src){ try{ this.src.stop(); }catch(e){} try{ this.src.disconnect(); }catch(e){} this.src = null; }
+  },
+  time(){ return this.playing ? Math.max(0, Sound.ctx.currentTime - this.startAt) : this.pausedAt; },
+  pause(){ if (!this.playing) return; this.pausedAt = this.time(); this.playing = false; this.stopNode(); },
+  resume(){ if (this.playing || this.state !== 'ready') return; this.play(this.pausedAt); },
+  stop(){ this.stopNode(); this.playing = false; this.pausedAt = 0; }
+};
+
+/* ---------------------------------------------------------------- MUSIC (facade: gömülü > mp3 > prosedürel) */
 const Music = {
   el:null, track:null, ready:false, urls:{},
   init(){
@@ -1612,6 +1758,14 @@ const Music = {
     this.init();
     this.track = tr; this.ready = false; this.mode = 'none';
     if (!tr || !tr.bpm){ cb(false, CONFIG.GAME_DURATION); return; }
+    // Sınırsız mod: gömülü şarkı, örnek hassasiyetinde loop
+    if (tr.embedded){
+      Embedded.load(ok => {
+        if (ok){ this.mode = 'buffer'; this.ready = true; cb(true, Infinity); }
+        else { this.mode = 'proc'; this.ready = true; cb(true, Infinity); }
+      });
+      return;
+    }
     const src = this.srcFor(tr);
     const useProc = () => {
       this.mode = 'proc'; this.ready = true;
@@ -1630,14 +1784,33 @@ const Music = {
   },
   play(){
     if (!this.ready) return;
+    if (this.mode === 'buffer'){ Embedded.play(0); return; }
     if (this.mode === 'file'){ this.el.currentTime = 0; const pr = this.el.play(); if (pr && pr.catch) pr.catch(()=>{}); }
-    else Proc.start(this.track, CONFIG.GAME_DURATION);
+    else Proc.start(this.track, this.track.endless ? Infinity : CONFIG.GAME_DURATION);
   },
-  pause(){ if (this.mode === 'file') this.el.pause(); else Proc.pause(); },
-  resume(){ if (this.mode === 'file'){ const pr = this.el.play(); if (pr && pr.catch) pr.catch(()=>{}); } else Proc.resume(); },
-  stop(){ if (this.mode === 'file'){ this.el.pause(); this.el.currentTime = 0; } else Proc.stop(); },
-  time(){ return this.mode === 'file' ? this.el.currentTime : Proc.time(); },
-  isPlaying(){ return this.mode === 'file' ? (this.ready && !this.el.paused) : Proc.playing; },
+  pause(){
+    if (this.mode === 'buffer') Embedded.pause();
+    else if (this.mode === 'file') this.el.pause();
+    else Proc.pause();
+  },
+  resume(){
+    if (this.mode === 'buffer') Embedded.resume();
+    else if (this.mode === 'file'){ const pr = this.el.play(); if (pr && pr.catch) pr.catch(()=>{}); }
+    else Proc.resume();
+  },
+  stop(){
+    if (this.mode === 'buffer') Embedded.stop();
+    else if (this.mode === 'file'){ this.el.pause(); this.el.currentTime = 0; }
+    else Proc.stop();
+  },
+  time(){
+    if (this.mode === 'buffer') return Embedded.time();
+    return this.mode === 'file' ? this.el.currentTime : Proc.time();
+  },
+  isPlaying(){
+    if (this.mode === 'buffer') return Embedded.playing;
+    return this.mode === 'file' ? (this.ready && !this.el.paused) : Proc.playing;
+  },
   tick(){ if (this.mode === 'proc') Proc.tick(); },
   setFile(trId, file){
     if (this.urls[trId]) URL.revokeObjectURL(this.urls[trId]);
@@ -1652,8 +1825,12 @@ const Rhythm = {
     this.track = track;
     this.active = !!(track && track.bpm > 0 && Music.ready);
     this.beatLen = track && track.bpm ? 60 / track.bpm : 0.5;
-    this.step = this.beatLen / CONFIG.RHYTHM.SUBDIV;
+    // 102 BPM yarı tempo: sınırsız modda 16'lık grid kullanılır ki noodle akışı
+    // 90 saniyelik modlardaki yoğunluğa (~1.4/sn) otursun.
+    this.step = this.beatLen / ((track && track.endless) ? CONFIG.ENDLESS.subdiv : CONFIG.RHYTHM.SUBDIV);
     this.idx = 0; this.lastX = null; this.lastHit = -99; this.lastBeatIdx = -1;
+    this.loopLen = (track && track.endless)
+      ? (60 / CONFIG.ENDLESS.bpm) * 4 * CONFIG.ENDLESS.bars : 0;
   },
   stop(){ this.active = false; },
   sectionAt(p){
@@ -1661,17 +1838,38 @@ const Rhythm = {
     for (const sec of S) if (p <= sec.to) return sec;
     return S[S.length - 1];
   },
+  /* Sınırsız mod bölüm akışı: kısa ısınma, sonra sürekli yüksek tempo.
+     90 saniyelik eğri burada işe yaramaz — oyuncu dakikalarca oynuyor, bu yüzden
+     yoğunluk nefes payı bırakarak dönüşümlü ilerler. */
+  sectionEndless(t){
+    const E = CONFIG.ENDLESS, S = E.SECTIONS;
+    let sec;
+    if (t < 8)        sec = S[0];                  // ısınma
+    else if (t < 22)  sec = S[1];
+    else {
+      // 4 barlık dilimler: üç yoğun bölüm, bir nefes — sonra zirve karışır
+      const slot = Math.floor(t / 14) % 4;
+      if (slot === 3) sec = S[3];
+      else sec = (t > E.rampSeconds && slot === 1) ? S[4] : S[2];
+    }
+    // Zorluk zamanla tepki süresini kısaltır, rampSeconds'ta sabitlenir
+    const k = 1 - E.fallTighten * clamp(t / E.rampSeconds, 0, 1);
+    return { fall: sec.fall * k, pattern: sec.pattern };
+  },
   update(game, songTime){
     if (!this.active) return;
     const dur = game.duration, off = (Store.data.settings.audioOffset || 0) / 1000;
     for (let guard = 0; guard < 48; guard++){
       const i = this.idx;
       const tHit = off + i * this.step;
-      if (tHit > dur - 0.5){ this.active = false; break; }
-      const sec = this.sectionAt(tHit / dur);
-      if (tHit - sec.fall > songTime) break;            // spawn zamanı henüz gelmedi
+      if (isFinite(dur) && tHit > dur - 0.5){ this.active = false; break; }
+      const sec = game.endless ? this.sectionEndless(tHit) : this.sectionAt(tHit / dur);
+      // Hız çubuğu düşüş SÜRESİNİ kısaltır: noodle daha geç doğar, daha hızlı iner,
+      // ama iniş anı hep tHit kalır — vuruş senkronu hızdan etkilenmez.
+      const fallWin = Math.max(0.22, sec.fall / Speed.get());
+      if (tHit - fallWin > songTime) break;             // spawn zamanı henüz gelmedi
       this.idx++;
-      if (tHit - sec.fall < songTime - CONFIG.RHYTHM.LATE_SKIP) continue;  // geç kalmış slot
+      if (tHit - fallWin < songTime - CONFIG.RHYTHM.LATE_SKIP) continue;  // geç kalmış slot
       if (sec.pattern[i % sec.pattern.length] !== '1') continue;
       this.emit(game, tHit, sec, songTime);
     }
@@ -1693,8 +1891,8 @@ const Rhythm = {
 
     const spawnY = -r - 12;
     const dist = game.player.y - spawnY;
-    // Hız, kalan gerçek süreye göre hesaplanır: noodle tam tHit anında kase hattına iner
-    const fall = Math.max(0.25, tHit - songTime);
+    // Noodle tam tHit anında kase hattına iner (kalan gerçek süreye göre hız).
+    const fall = Math.max(0.12, tHit - songTime);
     const speed = dist / fall;
 
     const n = NoodleMgr.spawn(mega ? 'normal' : type, x, spawnY, r, speed, mega);
@@ -1713,6 +1911,19 @@ const Rhythm = {
     if (b !== this.lastBeatIdx){ this.lastBeatIdx = b; return true; }
     return false;
   }
+};
+
+/* ---------------------------------------------------------------- HIZ AYARI */
+const Speed = {
+  get(){
+    const v = Store.data.settings.speed;
+    return (typeof v === 'number' && isFinite(v)) ? clamp(v, CONFIG.SPEED.min, CONFIG.SPEED.max) : 1;
+  },
+  set(v){
+    Store.data.settings.speed = clamp(v, CONFIG.SPEED.min, CONFIG.SPEED.max);
+    Store.save();
+  },
+  label(){ return Speed.get().toFixed(2).replace(/0$/,'') + 'x'; }
 };
 
 /* ---------------------------------------------------------------- COMBO / LEVEL / SCORE */
@@ -1747,10 +1958,14 @@ const ScoreMgr = {
 const LevelMgr = {
   level: 1,
   reset(){ this.level = CONFIG.STARTING_LEVEL; },
-  check(xp){
+  check(xp, endless){
     let lv = 1;
-    const th = CONFIG.LEVEL_THRESHOLDS;
-    for (let i = 0; i < th.length; i++) if (xp >= th[i]) lv = i + 1;
+    if (endless){
+      lv = 1 + Math.floor(xp / CONFIG.ENDLESS.levelEveryXp);
+    } else {
+      const th = CONFIG.LEVEL_THRESHOLDS;
+      for (let i = 0; i < th.length; i++) if (xp >= th[i]) lv = i + 1;
+    }
     if (lv > this.level){ this.level = lv; return true; }
     return false;
   }
@@ -1764,7 +1979,7 @@ const Game = {
   canvas:null, ctx:null, W:0, H:0, S:1, dpr:1,
   state: STATE.MENU, last: 0, acc: 0, fps: 60, fpsT: 0, frames: 0,
   time: 0, timeLeft: CONFIG.GAME_DURATION, duration: CONFIG.GAME_DURATION, rainbowTime: 0,
-  track: null, rhythmMode: false, beatPulse: 0,
+  track: null, rhythmMode: false, beatPulse: 0, endless: false, elapsed: 0,
   lives: CONFIG.STARTING_LIVES, level: 1,
   shake: 0, shakeMag: 0, flash: 0, flashColor: '#fff',
   stats: null, cdIndex: 0, cdTimer: 0, lastBeep: -1, endingTimer: 0,
@@ -1842,8 +2057,10 @@ const Game = {
     Sound.unlock();
     if (track !== undefined) this.track = track;
     if (!this.track) this.track = CONFIG.TRACKS[CONFIG.TRACKS.length - 1];   // classic
+    this.endless = !!this.track.endless;
     Music.load(this.track, (ok, dur) => {
-      this.duration = this.track.bpm ? Math.min(dur, 300) : CONFIG.GAME_DURATION;
+      this.duration = this.endless ? Infinity
+                    : (this.track.bpm ? Math.min(dur, 300) : CONFIG.GAME_DURATION);
       this.rhythmMode = !!(ok && this.track.bpm > 0);
       this.timeLeft = this.duration;
       Rhythm.start(this.track);
@@ -1854,6 +2071,7 @@ const Game = {
     this.lives = CONFIG.STARTING_LIVES;
     this.level = CONFIG.STARTING_LEVEL;
     this.timeLeft = this.duration;
+    this.elapsed = 0;
     this.rainbowTime = 0; this.beatPulse = 0; this.shake = 0; this.flash = 0; this.endingTimer = 0;
     this.player.reset(); this.player.layout(this.W, this.H, this.S);
     this.player.x = this.player.targetX = this.W / 2;
@@ -1895,10 +2113,13 @@ const Game = {
   endGame(reason){
     if (this.state === STATE.RESULTS) return;
     Sound.stopMusic(); Music.stop(); Rhythm.stop();
-    this.stats.timeSurvived = Math.round(this.duration - Math.max(0, this.timeLeft));
+    this.stats.timeSurvived = Math.round(this.endless ? this.elapsed : (this.duration - Math.max(0, this.timeLeft)));
     const d = Store.data;
-    const isRecord = ScoreMgr.score > d.bestScore;
-    if (isRecord) d.bestScore = Math.floor(ScoreMgr.score);
+    const isRecord = this.endless ? (ScoreMgr.score > d.bestEndless) : (ScoreMgr.score > d.bestScore);
+    if (isRecord){
+      if (this.endless) d.bestEndless = Math.floor(ScoreMgr.score);
+      else d.bestScore = Math.floor(ScoreMgr.score);
+    }
     if (ComboMgr.max > d.bestCombo) d.bestCombo = ComboMgr.max;
     if (this.level > d.highestLevel) d.highestLevel = this.level;
     const coins = Math.floor(ScoreMgr.score / CONFIG.COIN_DIVISOR);
@@ -1912,15 +2133,20 @@ const Game = {
 
   /* ---- zorluk ---- */
   difficulty(){
-    const elapsed = this.duration - this.timeLeft;
+    const elapsed = this.elapsed;
+    if (this.endless){
+      // Ritim modunda spawn'ı Rhythm yönetir; bu yalnızca yedek yoldur.
+      const t = clamp(elapsed / CONFIG.ENDLESS.rampSeconds, 0, 1);
+      return (0.9 + t * 1.3) * Speed.get();
+    }
     const timeF = 0.85 + (elapsed / this.duration) * 0.62;   // 0.85 -> 1.47
     const levelF = 1 + (this.level - 1) * 0.045;
     const rush = elapsed > 80 ? 1.12 : 1;
-    return timeF * levelF * rush;
+    return timeF * levelF * rush * Speed.get();
   },
 
   checkLevel(){
-    if (LevelMgr.check(ScoreMgr.xp)){
+    if (LevelMgr.check(ScoreMgr.xp, this.endless)){
       this.level = LevelMgr.level;
       Sound.play('level'); vibrate(25);
       UI.toast('LEVEL UP', '#3ce7ff');
@@ -2050,11 +2276,15 @@ const Game = {
     if (this.endingTimer > 0){       // game over gecikmesi (efektler görünsün)
       this.endingTimer -= dt;
       if (this.endingTimer <= 0){ this.endGame('GAME OVER'); return; }
+    } else if (this.endless){
+      // Sınırsız mod: süre dolmaz, canlar bitene kadar sürer
+      this.elapsed = (this.rhythmMode && Music.isPlaying()) ? Music.time() : (this.elapsed + dt);
     } else {
       const before = Math.ceil(this.timeLeft);
       // Ritim modunda zaman kaynağı doğrudan şarkı: drift olmaz
       if (this.rhythmMode && Music.isPlaying()) this.timeLeft = this.duration - Music.time();
       else this.timeLeft -= dt;
+      this.elapsed = this.duration - this.timeLeft;
       const after = Math.ceil(this.timeLeft);
       if (after !== before && after <= 5 && after > 0){
         UI.toast(String(after), '#ffffff');
@@ -2076,7 +2306,7 @@ const Game = {
     this.player.update(dt, this.W);
     if (this.rhythmMode){
       Music.tick();                       // prosedürel müzik zamanlayıcısı
-      const st = this.duration - this.timeLeft;
+      const st = this.endless ? this.elapsed : (this.duration - this.timeLeft);
       Rhythm.update(this, st);
       if (Rhythm.beatTick(st)) this.beatPulse = 1;
       this.beatPulse = Math.max(0, this.beatPulse - dt * 3.4);
@@ -2119,10 +2349,15 @@ const Game = {
       for (const n of NoodleMgr.pool) if (n.active) n.draw(ctx, this.time);
       this.player.draw(ctx, this.time);
     } else if (this.state === STATE.MENU){
-      // menüde dekoratif kase
-      this.player.targetX = W/2 + Math.sin(this.time * 0.6) * W * 0.13;
+      // menüde dekoratif kase — menü butonlarının altında kalsın diye aşağı alınır
+      this.player.targetX = W/2 + Math.sin(this.time * 0.6) * W * 0.30;
       this.player.update(1/60, W);
+      ctx.save();
+      ctx.translate(0, this.player.h * 0.55);
+      ctx.globalAlpha = 0.85;
       this.player.draw(ctx, this.time);
+      ctx.restore();
+      ctx.globalAlpha = 1;
     }
 
     Particles.draw(ctx);
@@ -2175,12 +2410,29 @@ const UI = {
       else this.openSongs();
     });
     on('btnTutOk', () => { Store.data.tutorialSeen = true; Store.save(); this.openSongs(); });
+    on('btnEndless', () => {
+      const tr = CONFIG.TRACKS.find(t => t.endless);
+      if (!Store.data.tutorialSeen){ Store.data.tutorialSeen = true; Store.save(); }
+      game.startGame(tr);
+    });
+
+    // hız çubuğu (şarkı seçim ekranı)
+    const spd = $('spdSlider');
+    spd.min = CONFIG.SPEED.min; spd.max = CONFIG.SPEED.max; spd.step = CONFIG.SPEED.step;
+    spd.value = Speed.get();
+    $('spdVal').textContent = Speed.label();
+    spd.addEventListener('input', () => {
+      Speed.set(parseFloat(spd.value));
+      $('spdVal').textContent = Speed.label();
+      this.syncSpeedUI();
+    });
+    spd.addEventListener('change', () => Sound.play('button'));
     on('btnSongBack', () => { this.showScreen('scMenu'); game.state = STATE.MENU; });
     on('btnLoadAll', () => $('fileAll').click());
 
     $('fileAll').addEventListener('change', e => {
       const files = Array.from(e.target.files).sort((a,b) => a.name.localeCompare(b.name, 'en', { numeric:true }));
-      const tracks = CONFIG.TRACKS.filter(t => t.bpm > 0);
+      const tracks = CONFIG.TRACKS.filter(t => t.bpm > 0 && !t.endless);
       files.forEach((f, i) => { if (tracks[i]) Music.setFile(tracks[i].id, f); });
       e.target.value = '';
       this.openSongs();
@@ -2298,11 +2550,23 @@ const UI = {
   },
 
   syncTime(game){
-    const t = Math.ceil(game.timeLeft);
-    if (this._t !== t){
-      this._t = t;
-      $('timeVal').textContent = t;
-      $('hudTime').classList.toggle('warn', t <= 10);
+    if (game.endless){
+      const e = Math.floor(game.elapsed);
+      if (this._t !== e){
+        this._t = e;
+        const m = Math.floor(e / 60), sec = e % 60;
+        $('timeVal').textContent = m + ':' + (sec < 10 ? '0' : '') + sec;
+        $('hudTime').classList.remove('warn');
+        $('timeLbl').textContent = 'SÜRE ∞';
+      }
+    } else {
+      const t = Math.ceil(game.timeLeft);
+      if (this._t !== t){
+        this._t = t;
+        $('timeVal').textContent = t;
+        $('hudTime').classList.toggle('warn', t <= 10);
+        $('timeLbl').textContent = 'TIME';
+      }
     }
     const rb = game.rainbowTime > 0;
     $('rainbowBar').classList.toggle('on', rb);
@@ -2332,12 +2596,13 @@ const UI = {
   },
 
   showResults(game, reason, isRecord, coins){
-    $('resTitle').textContent = reason;
+    $('resTitle').textContent = game.endless ? 'GAME OVER' : reason;
+    $('resSub').textContent = game.endless ? ('SINIRSIZ MOD · ' + game.stats.timeSurvived + ' SANİYE') : 'FINAL SCORE';
     $('resTitle').classList.toggle('win', isRecord);
     $('resScore').textContent = fmt(ScoreMgr.score);
     $('resNew').style.display = isRecord ? 'block' : 'none';
     $('resCoins').textContent = '+' + fmt(coins) + ' coins';
-    $('stBest').textContent = fmt(Store.data.bestScore);
+    $('stBest').textContent = fmt(game.endless ? Store.data.bestEndless : Store.data.bestScore);
     $('stLevel').textContent = game.level;
     $('stCombo').textContent = ComboMgr.max;
     $('stCaught').textContent = game.stats.caught;
@@ -2358,7 +2623,7 @@ const UI = {
         max_combo: ComboMgr.max,
         level: game.level,
         caught: game.stats.caught,
-        duration_s: Math.round(game.duration)
+        duration_s: Math.min(3600, Math.max(1, Math.round(game.stats.timeSurvived || 0)))
       }).then(res => {
         if (res.ok){ net.classList.add('ok'); net.textContent = 'Skor sıralamaya gönderildi'; }
         else if (res.reason === 'queued') net.textContent = 'İnternet yok — skor kuyruğa alındı';
@@ -2369,15 +2634,29 @@ const UI = {
     if (isRecord) Particles.burst(game.W/2, game.H*0.32, 'golden', 40);
   },
 
+  syncSpeedUI(){
+    const v = Speed.get();
+    const a = $('spdSlider'), b = $('spdSlider2');
+    if (a && parseFloat(a.value) !== v){ a.value = v; }
+    if (b && parseFloat(b.value) !== v){ b.value = v; }
+    const t = Speed.label();
+    if ($('spdVal')) $('spdVal').textContent = t;
+    if ($('spdVal2')) $('spdVal2').textContent = t;
+  },
+
   openSongs(){
     const game = this.game;
     game.state = STATE.MENU;
+    $('spdSlider').value = Speed.get();
+    $('spdVal').textContent = Speed.label();
     const list = $('songList'); list.innerHTML = '';
-    CONFIG.TRACKS.forEach((tr, i) => {
+    // Sınırsız mod en üstte
+    const ordered = CONFIG.TRACKS.slice().sort((a, b) => (b.endless ? 1 : 0) - (a.endless ? 1 : 0));
+    ordered.forEach((tr, i) => {
       const row = document.createElement('div');
       row.className = 'song';
       const idx = document.createElement('div'); idx.className = 'idx';
-      idx.textContent = tr.bpm ? String(i + 1).padStart(2, '0') : '--';
+      idx.textContent = tr.bpm ? String(CONFIG.TRACKS.indexOf(tr) + 1).padStart(2, '0') : '--';
       const meta = document.createElement('div'); meta.className = 'meta';
       const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = tr.name;
       const info = document.createElement('div'); info.className = 'info';
@@ -2387,7 +2666,12 @@ const UI = {
       load.textContent = tr.bpm ? 'MP3 SEÇ' : 'OYNA';
       row.appendChild(idx); row.appendChild(meta); row.appendChild(load);
 
-      if (tr.bpm){
+      if (tr.endless){
+        row.classList.add('ready','endless-row');
+        idx.textContent = '∞';
+        info.textContent = tr.bpm + ' BPM · SINIRSIZ · şarkı loop, süre yok, canların bitene kadar';
+        load.textContent = 'OYNA';
+      } else if (tr.bpm){
         row.classList.add('ready');
         info.textContent = tr.bpm + ' BPM · ' + tr.diff + ' · oyun müziği (90 sn)';
         load.textContent = 'MP3 EKLE';
@@ -2468,6 +2752,7 @@ const UI = {
 
   openScores(){
     $('hsBest').textContent = fmt(Store.data.bestScore);
+    $('hsEndless').textContent = fmt(Store.data.bestEndless);
     $('hsCombo').textContent = Store.data.bestCombo;
     $('hsLevel').textContent = Store.data.highestLevel;
     $('hsCoins').textContent = fmt(Store.data.totalCoins);
@@ -2496,6 +2781,19 @@ const UI = {
       sl.addEventListener('change', () => Sound.play('button'));
       row.appendChild(nm); row.appendChild(sl); row.appendChild(val); list.appendChild(row);
     }
+
+    // --- hız ---
+    const srow = document.createElement('div'); srow.className = 'setting vol';
+    const snm = document.createElement('div'); snm.textContent = 'Game speed'; snm.style.flex = '0 0 42%';
+    const ssl = document.createElement('input');
+    ssl.type = 'range'; ssl.id = 'spdSlider2';
+    ssl.min = CONFIG.SPEED.min; ssl.max = CONFIG.SPEED.max; ssl.step = CONFIG.SPEED.step;
+    ssl.value = Speed.get(); ssl.style.flex = '1';
+    const sval = document.createElement('span'); sval.className = 'volval'; sval.id = 'spdVal2';
+    sval.textContent = Speed.label();
+    ssl.addEventListener('input', () => { Speed.set(parseFloat(ssl.value)); this.syncSpeedUI(); });
+    ssl.addEventListener('change', () => Sound.play('button'));
+    srow.appendChild(snm); srow.appendChild(ssl); srow.appendChild(sval); list.appendChild(srow);
 
     // --- performans modu ---
     const prow = document.createElement('div'); prow.className = 'setting';

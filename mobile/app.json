@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Ramen Rush",
+    "slug": "ramen-rush",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#05030c",
+    "primaryColor": "#f0b23a",
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.enesoft.ramenrush",
+      "versionCode": 1,
+      "resizeableActivity": true,
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": ["android.permission.VIBRATE", "android.permission.INTERNET"],
+      "adaptiveIcon": { "backgroundColor": "#05030c" }
+    },
+    "ios": { "bundleIdentifier": "com.enesoft.ramenrush", "supportsTablet": true },
+    "plugins": ["expo-keep-awake"],
+    "extra": { "eas": { "projectId": "" } }
+  }
+}
