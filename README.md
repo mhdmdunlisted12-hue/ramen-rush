@@ -5,7 +5,8 @@ kaseyle yakalıyorsun — ama ramenler rastgele düşmüyor, **müziğin vuruşu
 
 Tek HTML dosyası. Bağımlılık yok, build adımı yok, sunucu yok. `index.html`'i aç ve oyna.
 
-**Oyna:** https://mhdmdunlisted12-hue.github.io/ramenrush/
+**Oyna:** https://mhdmdunlisted12-hue.github.io/ramen-rush/
+*(link için Settings → Pages → Source: `main` / `root` seçili olmalı)*
 
 ---
 
